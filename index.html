@@ -1,0 +1,1710 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FIT TRACK - Gestion de Salle de Sport</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.1/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/phosphor-icons/1.4.2/css/phosphor.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            body.printing #app, body.printing .modal-buttons {
+                display: none;
+            }
+            body.printing #card-modal {
+                position: static;
+                display: flex;
+                background: none;
+                box-shadow: none;
+                padding: 0;
+            }
+            body.printing #card-display-area {
+                border: 2px solid black;
+            }
+        }
+        #print-area { display: none; }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans">
+
+    <!-- Zone d'impression (cachée par défaut) -->
+    <div id="print-area"></div>
+
+    <!-- Conteneur principal de l'application -->
+    <div id="app" class="max-w-4xl mx-auto p-4 md:p-6">
+
+        <!-- Vue de connexion -->
+        <div id="login-view">
+            <div class="bg-white p-8 rounded-2xl shadow-lg max-w-sm mx-auto mt-20">
+                <div class="flex items-center justify-center mb-6">
+                    <i class="ph-bold ph-barbell text-5xl text-blue-600"></i>
+                    <h1 class="text-3xl font-bold ml-3">FIT TRACK</h1>
+                </div>
+
+                <div class="flex border-b mb-6">
+                    <button id="manager-tab" class="flex-1 py-2 font-semibold border-b-2 border-blue-600 text-blue-600">Gérant</button>
+                    <button id="consultation-tab" class="flex-1 py-2 font-semibold text-slate-500">Propriétaire</button>
+                </div>
+
+                <div id="manager-login-form">
+                    <h2 class="text-xl font-semibold text-center text-slate-600 mb-6">Connexion Gérant</h2>
+                    <div class="space-y-4">
+                        <input type="email" id="email-input" placeholder="Adresse e-mail" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="password" id="password-input" placeholder="Mot de passe" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button id="login-button" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors duration-300 flex justify-center items-center">
+                            <span class="btn-text">Connexion</span>
+                            <i class="ph-bold ph-circle-notch spinner text-2xl hidden"></i>
+                        </button>
+                        <p id="login-error" class="text-red-500 text-sm text-center"></p>
+                    </div>
+                </div>
+                
+                <div id="consultation-login-form" class="hidden">
+                     <h2 class="text-xl font-semibold text-center text-slate-600 mb-6">Accès Propriétaire</h2>
+                     <div class="space-y-4">
+                        <input type="text" id="gym-id-input" placeholder="Identifiant de la salle" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="password" id="consultation-pin-input" placeholder="Code PIN" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500" inputmode="numeric" maxlength="4">
+                        <button id="consultation-login-button" class="w-full bg-slate-700 text-white font-bold py-3 rounded-lg hover:bg-slate-800 transition-colors duration-300 flex justify-center items-center">
+                            <span class="btn-text">Accéder</span>
+                            <i class="ph-bold ph-circle-notch spinner text-2xl hidden"></i>
+                        </button>
+                        <p id="consultation-login-error" class="text-red-500 text-sm text-center"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Vue principale de l'application (cachée par défaut) -->
+        <div id="main-view" class="hidden">
+            <!-- Header -->
+            <header class="flex justify-between items-center mb-6">
+                 <div class="flex items-center">
+                    <i class="ph-bold ph-barbell text-4xl text-blue-600"></i>
+                    <h1 class="text-2xl md:text-3xl font-bold ml-3">FIT TRACK</h1>
+                </div>
+                 <div class="text-right">
+                    <div id="gym-id-display" class="hidden text-xs bg-slate-200 text-slate-600 px-2 py-1 rounded-md inline-block mb-1">
+                        ID de la salle : <span id="gym-id-text" class="font-semibold"></span>
+                    </div>
+                    <p id="user-email" class="text-sm text-slate-500"></p>
+                    <button id="logout-button" class="text-sm font-semibold text-red-600 hover:underline">
+                        Déconnexion
+                    </button>
+                </div>
+            </header>
+
+            <!-- Navigation -->
+            <nav class="flex space-x-2 bg-slate-200 p-1 rounded-lg mb-6">
+                <button data-view="dashboard" class="nav-button flex-1 py-2 px-4 rounded-md font-semibold text-slate-600">
+                    <i class="ph ph-gauge mr-1"></i> Tableau de Bord
+                </button>
+                <button data-view="personnel" class="nav-button flex-1 py-2 px-4 rounded-md font-semibold text-slate-600">
+                    <i class="ph ph-users-three mr-1"></i> Personnel
+                </button>
+                <button data-view="members" class="nav-button flex-1 py-2 px-4 rounded-md font-semibold bg-white text-blue-600 shadow">
+                    <i class="ph ph-users mr-1"></i> Membres
+                </button>
+                <button data-view="finance" class="nav-button flex-1 py-2 px-4 rounded-md font-semibold text-slate-600">
+                    <i class="ph ph-chart-line mr-1"></i> Finances
+                </button>
+                <button data-view="sessions" class="nav-button flex-1 py-2 px-4 rounded-md font-semibold text-slate-600">
+                    <i class="ph ph-clock-counter-clockwise mr-1"></i> Présences
+                </button>
+            </nav>
+
+            <!-- Section Tableau de Bord -->
+            <div id="dashboard-section" class="hidden">
+                <h2 id="dashboard-title" class="text-2xl font-bold mb-4 cursor-pointer" title="Cliquez 5 fois pour les options avancées">Vue d'Ensemble</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-xl shadow">
+                        <h3 class="font-semibold text-slate-500 flex items-center"><i class="ph ph-user-circle-check text-green-500 mr-2"></i>Membres Actifs</h3>
+                        <p id="db-active-members" class="text-3xl font-bold mt-2">0</p>
+                    </div>
+                     <div class="bg-white p-4 rounded-xl shadow">
+                        <h3 class="font-semibold text-slate-500 flex items-center"><i class="ph ph-user-circle-gear text-orange-500 mr-2"></i>Expire Bientôt</h3>
+                        <p id="db-expiring-soon" class="text-3xl font-bold mt-2">0</p>
+                    </div>
+                     <div class="bg-white p-4 rounded-xl shadow">
+                        <h3 class="font-semibold text-slate-500 flex items-center"><i class="ph ph-user-circle-plus text-blue-500 mr-2"></i>Nouveaux ce Mois-ci</h3>
+                        <p id="db-new-this-month" class="text-3xl font-bold mt-2">0</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-xl shadow">
+                        <h3 class="font-semibold text-slate-500">Revenus (Ce Mois-ci)</h3>
+                        <p id="db-revenue-month" class="text-2xl font-bold text-green-600">0 FCFA</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow">
+                        <h3 class="font-semibold text-slate-500">Charges (Ce Mois-ci)</h3>
+                        <p id="db-charges-month" class="text-2xl font-bold text-red-600">0 FCFA</p>
+                    </div>
+                     <div class="bg-white p-4 rounded-xl shadow">
+                        <h3 class="font-semibold text-slate-500">Bénéfice Net (Ce Mois-ci)</h3>
+                        <p id="db-net-profit-month" class="text-2xl font-bold text-blue-600">0 FCFA</p>
+                    </div>
+                </div>
+                <div id="danger-zone" class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow hidden mt-8">
+                    <h3 class="font-bold text-lg text-red-800 mb-2">Zone de Danger</h3>
+                    <p class="text-red-700 mb-4">Cette action est irréversible et supprimera toutes les données de l'application (membres, transactions, charges, présences, personnel).</p>
+                    <button id="reset-app-button" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center">
+                        <i class="ph-bold ph-warning mr-2"></i> Réinitialiser l'Application
+                    </button>
+                </div>
+            </div>
+
+            <!-- Section Membres -->
+            <div id="members-section">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div class="relative">
+                        <input type="text" id="search-input" placeholder="Rechercher par nom ou téléphone..." class="w-full px-4 py-3 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button id="scan-qr-button" class="w-full bg-slate-800 text-white font-bold py-3 rounded-lg hover:bg-slate-900 transition-colors flex items-center justify-center">
+                            <i class="ph-bold ph-qr-code text-2xl mr-2"></i> Scanner QR Code
+                        </button>
+                        <button id="add-member-button" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center">
+                           <i class="ph-bold ph-plus text-2xl mr-2"></i> Ajouter
+                        </button>
+                    </div>
+                </div>
+                <div class="flex space-x-2 bg-slate-200 p-1 rounded-lg mb-4">
+                    <button data-filter="all" class="filter-btn flex-1 py-1 px-3 rounded-md font-semibold bg-blue-600 text-white shadow">Tous</button>
+                    <button data-filter="active" class="filter-btn flex-1 py-1 px-3 rounded-md font-semibold text-slate-700">Actifs</button>
+                    <button data-filter="expiring" class="filter-btn flex-1 py-1 px-3 rounded-md font-semibold text-slate-700">Expire Bientôt</button>
+                    <button data-filter="expired" class="filter-btn flex-1 py-1 px-3 rounded-md font-semibold text-slate-700">Expirés</button>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-lg min-h-[300px]">
+                    <div id="member-list-container" class="space-y-3"></div>
+                     <p id="no-members-message" class="text-center text-slate-500 py-10 hidden">Aucun membre trouvé.</p>
+                     <div id="loader" class="text-center text-slate-500 py-10">
+                        <i class="ph-bold ph-circle-notch text-4xl animate-spin text-blue-500"></i>
+                        <p>Chargement des données...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Finances -->
+            <div id="finance-section" class="hidden">
+                <div class="flex justify-end mb-4">
+                     <button id="add-charge-button" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center">
+                        <i class="ph-bold ph-plus mr-2"></i> Ajouter une Charge
+                    </button>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow mb-6">
+                    <h3 class="font-bold text-lg mb-4">Télécharger un Rapport</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div class="md:col-span-1">
+                            <label for="report-type" class="text-sm font-medium">Type</label>
+                            <select id="report-type" class="w-full mt-1 p-2 border rounded-md">
+                                <option value="payments">Financier</option>
+                                <option value="members">Liste des Membres</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-1">
+                            <label for="report-start-date" class="text-sm font-medium">Début</label>
+                            <input type="date" id="report-start-date" class="w-full mt-1 p-2 border rounded-md">
+                        </div>
+                        <div class="md:col-span-1">
+                            <label for="report-end-date" class="text-sm font-medium">Fin</label>
+                            <input type="date" id="report-end-date" class="w-full mt-1 p-2 border rounded-md">
+                        </div>
+                        <div class="md:col-span-1">
+                            <button id="download-report-button" class="w-full bg-emerald-600 text-white font-bold py-2 rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center">
+                                <i class="ph ph-download-simple mr-2"></i> Exporter
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow mb-6">
+                     <h3 id="transactions-title" class="font-bold text-lg mb-4">Historique Financier</h3>
+                     <div id="financial-history-list" class="space-y-2 max-h-96 overflow-y-auto"></div>
+                     <p id="no-transactions-message" class="text-center text-slate-500 py-10 hidden">Aucune transaction.</p>
+                </div>
+            </div>
+            
+            <div id="sessions-section" class="hidden">
+                <div class="flex flex-col md:flex-row justify-between md:items-center mb-4 gap-4">
+                    <h2 class="text-2xl font-bold">Historique des Présences Membres</h2>
+                    <div>
+                        <label for="session-date-filter" class="text-sm font-medium mr-2">Filtrer par date:</label>
+                        <input type="date" id="session-date-filter" class="p-2 border rounded-md">
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-lg min-h-[300px]">
+                    <div id="sessions-history-list" class="space-y-2">
+                        <!-- L'historique sera injecté ici -->
+                    </div>
+                    <p id="no-sessions-message" class="text-center text-slate-500 py-10 hidden">Aucune présence enregistrée pour cette date.</p>
+                    <div id="sessions-loader" class="text-center text-slate-500 py-10">
+                        <i class="ph-bold ph-circle-notch text-4xl animate-spin text-blue-500"></i>
+                        <p>Chargement de l'historique...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="personnel-section" class="hidden">
+                <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4">
+                    <h2 class="text-2xl font-bold">Gestion du Personnel</h2>
+                    <div class="flex gap-4">
+                        <button id="add-personnel-button" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center">
+                            <i class="ph-bold ph-plus mr-2"></i> Ajouter un employé
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-lg min-h-[300px]">
+                    <div id="personnel-list-container" class="space-y-4">
+                        <!-- Les employés seront injectés ici -->
+                    </div>
+                    <p id="no-personnel-message" class="text-center text-slate-500 py-10 hidden">Aucun employé trouvé.</p>
+                    <div id="personnel-loader" class="text-center text-slate-500 py-10">
+                        <i class="ph-bold ph-circle-notch text-4xl animate-spin text-blue-500"></i>
+                        <p>Chargement du personnel...</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- Modals -->
+    <div id="member-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-50 rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="modal-title" class="text-2xl font-bold">Ajouter un Membre</h2>
+                <button id="close-modal-button" class="text-slate-500 hover:text-slate-800"><i class="ph-bold ph-x text-2xl"></i></button>
+            </div>
+            <form id="member-form" class="space-y-4">
+                <input type="hidden" id="member-id">
+                <h3 class="font-semibold border-b pb-2">Informations de Base</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="member-firstname" placeholder="Prénom" class="w-full p-2 border rounded-md" required>
+                    <input type="text" id="member-lastname" placeholder="Nom" class="w-full p-2 border rounded-md" required>
+                    <input type="tel" id="member-phone" placeholder="Téléphone" class="w-full p-2 border rounded-md" required>
+                    <input type="email" id="member-email" placeholder="Email (optionnel)" class="w-full p-2 border rounded-md">
+                    <div class="md:col-span-2">
+                         <input type="url" id="member-photo" placeholder="URL de la photo (optionnel)" class="w-full p-2 border rounded-md">
+                    </div>
+                </div>
+                <div id="new-member-fields">
+                    <h3 class="font-semibold border-b pb-2 pt-4">Type d'Adhésion</h3>
+                    <div id="member-type-container" class="flex bg-slate-200 p-1 rounded-lg">
+                         <button type="button" id="type-subscription" class="member-type-btn flex-1 p-2 rounded-md font-semibold bg-white text-blue-600 shadow">Abonnement</button>
+                         <button type="button" id="type-session" class="member-type-btn flex-1 p-2 rounded-md font-semibold text-slate-600">Carnet de Séances</button>
+                    </div>
+                    <input type="hidden" id="member-type" value="subscription">
+                    <div id="subscription-fields">
+                        <label for="subscription-duration" class="font-medium">Durée (en mois)</label>
+                        <input type="number" id="subscription-duration" min="1" placeholder="Ex: 3" class="w-full mt-1 p-2 border rounded-md">
+                    </div>
+                    <div id="session-fields" class="hidden">
+                        <label for="session-count" class="font-medium">Nombre de séances</label>
+                        <input type="number" id="session-count" min="1" placeholder="Ex: 10" class="w-full mt-1 p-2 border rounded-md">
+                    </div>
+                     <div id="amount-field-new">
+                        <label for="member-amount" class="font-medium">Montant Payé (FCFA)</label>
+                        <input type="number" id="member-amount" min="0" placeholder="Ex: 40000" class="w-full mt-1 p-2 border rounded-md" required>
+                    </div>
+                </div>
+                <h3 class="font-semibold border-b pb-2 pt-4">Informations d'Urgence</h3>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="member-emergency-name" placeholder="Contact d'urgence (nom)" class="w-full p-2 border rounded-md">
+                    <input type="tel" id="member-emergency-phone" placeholder="Contact d'urgence (tél)" class="w-full p-2 border rounded-md">
+                </div>
+                <textarea id="member-medical" placeholder="Antécédents médicaux, allergies..." class="w-full p-2 border rounded-md h-20"></textarea>
+                 <textarea id="member-notes" placeholder="Notes additionnelles..." class="w-full p-2 border rounded-md h-20"></textarea>
+                <div class="flex gap-4 pt-4 border-t">
+                    <button type="button" id="cancel-form-button" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Annuler</button>
+                    <button type="submit" id="submit-form-button" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors flex justify-center items-center">
+                        <span class="btn-text">Enregistrer</span>
+                        <i class="ph-bold ph-circle-notch spinner text-2xl hidden"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="personnel-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-50 rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="personnel-modal-title" class="text-2xl font-bold">Ajouter un Employé</h2>
+                <button id="close-personnel-modal-button" class="text-slate-500 hover:text-slate-800"><i class="ph-bold ph-x text-2xl"></i></button>
+            </div>
+            <form id="personnel-form" class="space-y-4">
+                <input type="hidden" id="personnel-id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="personnel-firstname" placeholder="Prénom" class="w-full p-2 border rounded-md" required>
+                    <input type="text" id="personnel-lastname" placeholder="Nom" class="w-full p-2 border rounded-md" required>
+                    <input type="tel" id="personnel-phone" placeholder="Contact" class="w-full p-2 border rounded-md" required>
+                    <input type="text" id="personnel-address" placeholder="Lieu de résidence" class="w-full p-2 border rounded-md">
+                    <input type="text" id="personnel-role" placeholder="Rôle / Activité (ex: Coach)" class="w-full p-2 border rounded-md">
+                    <input type="text" id="personnel-id-card" placeholder="N° pièce d'identité" class="w-full p-2 border rounded-md">
+                     <div>
+                        <label for="personnel-hire-date" class="text-sm font-medium">Date d'embauche</label>
+                        <input type="date" id="personnel-hire-date" class="w-full p-2 border rounded-md" required>
+                    </div>
+                    <input type="text" id="personnel-contract-type" placeholder="Type de contrat (CDI, CDD...)" class="w-full p-2 border rounded-md">
+                    <input type="number" id="personnel-salary" placeholder="Salaire (FCFA)" class="w-full p-2 border rounded-md" min="0">
+                    <div id="personnel-status-container" class="hidden md:col-span-2">
+                        <label for="personnel-status" class="text-sm font-medium">Statut</label>
+                         <select id="personnel-status" class="w-full p-2 border rounded-md">
+                            <option value="Actif">Actif</option>
+                            <option value="Contrat terminé">Contrat terminé</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex gap-4 pt-4 border-t">
+                    <button type="button" id="cancel-personnel-form-button" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Annuler</button>
+                    <button type="submit" id="submit-personnel-form-button" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors flex justify-center items-center">
+                        <span class="btn-text">Enregistrer</span>
+                        <i class="ph-bold ph-circle-notch spinner text-2xl hidden"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <div id="view-member-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-50">
+         <div class="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="view-modal-title" class="text-2xl font-bold truncate">Détails du Membre</h2>
+                <button id="close-view-modal-button" class="text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-full p-1 transition-colors"><i class="ph-bold ph-x text-2xl"></i></button>
+            </div>
+            <div id="view-member-content" class="space-y-4"></div>
+        </div>
+    </div>
+
+    <div id="personnel-sessions-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-[60]">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-xl max-h-[90vh] flex flex-col">
+           <div class="flex justify-between items-center mb-4">
+               <h2 id="personnel-sessions-title" class="text-2xl font-bold">Historique de Présence</h2>
+               <button id="close-personnel-sessions-modal" class="text-slate-500 hover:text-slate-800"><i class="ph-bold ph-x text-2xl"></i></button>
+           </div>
+           <div id="personnel-sessions-list" class="space-y-2 flex-1 overflow-y-auto"></div>
+           <div class="flex justify-end pt-4 border-t mt-4">
+                <button id="close-personnel-sessions-bottom-btn" class="bg-slate-200 font-bold py-2 px-6 rounded-lg hover:bg-slate-300 transition-colors">Fermer</button>
+           </div>
+        </div>
+    </div>
+
+
+    <div id="charge-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-slate-50 rounded-2xl p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Ajouter une Charge</h2>
+                <button id="close-charge-modal-button" class="text-slate-500 hover:text-slate-800"><i class="ph-bold ph-x text-2xl"></i></button>
+            </div>
+            <form id="charge-form" class="space-y-4">
+                <div>
+                    <label for="charge-description" class="font-medium">Description</label>
+                    <input type="text" id="charge-description" placeholder="Ex: Facture d'électricité" class="w-full mt-1 p-2 border rounded-md" required>
+                </div>
+                <div>
+                    <label for="charge-amount" class="font-medium">Montant (FCFA)</label>
+                    <input type="number" id="charge-amount" min="0" placeholder="Ex: 50000" class="w-full mt-1 p-2 border rounded-md" required>
+                </div>
+                 <div class="flex gap-4 pt-4 border-t">
+                    <button type="button" id="cancel-charge-button" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Annuler</button>
+                    <button type="submit" id="submit-charge-button" class="flex-1 bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition-colors flex justify-center items-center">
+                        <span class="btn-text">Enregistrer Charge</span>
+                        <i class="ph-bold ph-circle-notch spinner text-2xl hidden"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+     <div id="pin-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-[60]">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-sm">
+            <h2 class="text-xl font-bold text-center mb-2">Action Protégée</h2>
+            <p class="text-center text-slate-600 mb-6">Veuillez entrer le code superviseur pour continuer.</p>
+            <input type="password" id="pin-input" inputmode="numeric" class="w-full text-center text-2xl tracking-[.5em] p-3 border rounded-lg mb-4" maxlength="4">
+             <div class="grid grid-cols-2 gap-4">
+                <button id="pin-cancel" class="w-full bg-slate-200 p-3 rounded-lg font-bold">Annuler</button>
+                <button id="pin-confirm" class="w-full bg-blue-600 text-white p-3 rounded-lg font-bold">Confirmer</button>
+            </div>
+             <p id="pin-error" class="text-red-500 text-sm text-center mt-4"></p>
+        </div>
+    </div>
+
+    <div id="qr-scanner-modal" class="fixed inset-0 bg-black bg-opacity-90 flex flex-col items-center justify-center p-4 hidden z-50">
+        <h2 id="qr-scanner-title" class="text-2xl font-bold text-white mb-4">Scannez le code</h2>
+        <div id="qr-reader" class="w-full max-w-md bg-slate-700 rounded-lg overflow-hidden"></div>
+        <button id="close-scanner-button" class="mt-8 bg-white text-slate-800 font-bold py-3 px-6 rounded-lg">Fermer</button>
+    </div>
+
+    <div id="card-modal" class="fixed inset-0 bg-black bg-opacity-60 flex flex-col items-center justify-center p-4 hidden z-[70]">
+        <div class="bg-white p-6 rounded-2xl">
+            <div id="card-display-area" class="mb-6 p-4 bg-white"></div>
+            <div class="flex gap-4 modal-buttons">
+                <button id="close-card-modal-btn" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Fermer</button>
+                <button id="download-card-btn" class="flex-1 bg-green-600 text-white p-3 rounded-lg font-bold hover:bg-green-700 transition-colors flex items-center justify-center"><i class="ph ph-download-simple mr-2"></i>Télécharger</button>
+                <button id="print-card-btn-action" class="flex-1 bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition-colors flex items-center justify-center"><i class="ph ph-printer mr-2"></i>Imprimer</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="alert-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-[80]">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-sm text-center">
+            <div id="alert-icon" class="mx-auto mb-4"></div>
+            <p id="alert-message" class="text-lg text-slate-700 mb-6"></p>
+            <button id="alert-ok" class="bg-blue-600 text-white font-bold py-2 px-8 rounded-lg hover:bg-blue-700 transition-colors">OK</button>
+        </div>
+    </div>
+    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-[80]">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-sm text-center">
+            <i class="ph-bold ph-question text-5xl text-amber-500 mx-auto mb-4"></i>
+            <p id="confirm-message" class="text-lg text-slate-700 mb-8"></p>
+            <div class="flex gap-4">
+                <button id="confirm-cancel" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Annuler</button>
+                <button id="confirm-ok" class="flex-1 bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition-colors">Confirmer</button>
+            </div>
+        </div>
+    </div>
+    <div id="prompt-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-[80]">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-sm">
+            <p id="prompt-message" class="font-semibold text-slate-700 mb-4"></p>
+            <input type="text" id="prompt-input" class="w-full p-3 border rounded-lg mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="flex gap-4">
+                <button id="prompt-cancel" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Annuler</button>
+                <button id="prompt-ok" class="flex-1 bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition-colors">Valider</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CONFIGURATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCvWaZP0moEZGNFfSRltvipPmU7-hbqrCI",
+            authDomain: "mr-sylla.firebaseapp.com",
+            projectId: "mr-sylla",
+            storageBucket: "mr-sylla.appspot.com",
+            messagingSenderId: "81332547054",
+            appId: "1:81332547054:web:6cda14f2abb6a4c52a72ff"
+        };
+        const SUPERVISOR_PIN = "5008";
+        
+        // --- DOM ELEMENTS & STATE ---
+        const loginView = document.getElementById('login-view'), mainView = document.getElementById('main-view'), memberModal = document.getElementById('member-modal'), viewMemberModal = document.getElementById('view-member-modal'), pinModal = document.getElementById('pin-modal'), qrScannerModal = document.getElementById('qr-scanner-modal'), cardModal = document.getElementById('card-modal'), alertModal = document.getElementById('alert-modal'), confirmModal = document.getElementById('confirm-modal'), promptModal = document.getElementById('prompt-modal'), chargeModal = document.getElementById('charge-modal'), consultationLoginForm = document.getElementById('consultation-login-form'), managerLoginForm = document.getElementById('manager-login-form'), sessionsSection = document.getElementById('sessions-section'), personnelModal = document.getElementById('personnel-modal'), personnelSection = document.getElementById('personnel-section'), personnelSessionsModal = document.getElementById('personnel-sessions-modal');
+        
+        let db, auth;
+        let currentUserId = null, isReadOnlyMode = false;
+        let allMembers = [], allPayments = [], allCharges = [], allSessions = [], allPersonnel = [], allPersonnelSessions = [];
+        let pinResolve, alertResolve, confirmResolve, promptResolve;
+        let currentFilter = 'all';
+        let dangerZoneClickCount = 0;
+        let lastClickTimestamp = 0;
+        let unsubscribeMembers = () => {}, unsubscribePayments = () => {}, unsubscribeCharges = () => {}, unsubscribeSessions = () => {}, unsubscribePersonnel = () => {}, unsubscribePersonnelSessions = () => {};
+
+        // --- FULL SCRIPT LOGIC ---
+
+        function setupEventListeners() {
+            document.getElementById('login-button').addEventListener('click', handleLogin);
+            document.getElementById('password-input').addEventListener('keypress', (e) => e.key === 'Enter' && handleLogin());
+            document.getElementById('logout-button').addEventListener('click', handleLogout);
+            document.querySelectorAll('.nav-button').forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.view)));
+            document.getElementById('add-member-button').addEventListener('click', showAddMemberModal);
+            document.getElementById('close-modal-button').addEventListener('click', () => memberModal.classList.add('hidden'));
+            document.getElementById('cancel-form-button').addEventListener('click', () => memberModal.classList.add('hidden'));
+            document.getElementById('member-form').addEventListener('submit', handleMemberFormSubmit);
+            document.getElementById('search-input').addEventListener('input', handleSearch);
+            document.getElementById('member-type-container').addEventListener('click', (e) => {
+                const btn = e.target.closest('.member-type-btn');
+                if (!btn || btn.disabled) return;
+                document.querySelectorAll('.member-type-btn').forEach(b => {
+                    b.classList.remove('bg-white', 'text-blue-600', 'shadow');
+                    b.classList.add('text-slate-600');
+                });
+                btn.classList.add('bg-white', 'text-blue-600', 'shadow');
+                const type = btn.id === 'type-subscription' ? 'subscription' : 'session';
+                document.getElementById('member-type').value = type;
+                document.getElementById('subscription-fields').classList.toggle('hidden', type !== 'subscription');
+                document.getElementById('session-fields').classList.toggle('hidden', type === 'subscription');
+            });
+            document.getElementById('close-view-modal-button').addEventListener('click', () => viewMemberModal.classList.add('hidden'));
+            document.getElementById('pin-cancel').addEventListener('click', () => { pinModal.classList.add('hidden'); if (pinResolve) pinResolve(false); });
+            document.getElementById('pin-confirm').addEventListener('click', () => {
+                 if(document.getElementById('pin-input').value === SUPERVISOR_PIN) {
+                    pinModal.classList.add('hidden');
+                    if (pinResolve) pinResolve(true);
+                 } else {
+                    document.getElementById('pin-error').textContent = "Code incorrect.";
+                 }
+            });
+            document.getElementById('alert-ok').addEventListener('click', () => { if (alertResolve) alertResolve(); });
+            document.getElementById('confirm-ok').addEventListener('click', () => { if (confirmResolve) confirmResolve(true); });
+            document.getElementById('confirm-cancel').addEventListener('click', () => { if (confirmResolve) confirmResolve(false); });
+            document.getElementById('prompt-ok').addEventListener('click', () => { if (promptResolve) promptResolve(document.getElementById('prompt-input').value); });
+            document.getElementById('prompt-cancel').addEventListener('click', () => { if (promptResolve) promptResolve(null); });
+            document.getElementById('scan-qr-button').addEventListener('click', startQrScanner);
+            document.getElementById('close-scanner-button').addEventListener('click', stopQrScanner);
+            document.getElementById('close-card-modal-btn').addEventListener('click', () => cardModal.classList.add('hidden'));
+            document.getElementById('download-report-button').addEventListener('click', downloadReport);
+            document.getElementById('financial-history-list').addEventListener('click', (e) => {
+                const btn = e.target.closest('.delete-transaction-btn');
+                if (btn) btn.dataset.type === 'revenue' ? deleteTransaction(btn.dataset.id) : deleteCharge(btn.dataset.id);
+            });
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('bg-blue-600', 'text-white', 'shadow'));
+                e.currentTarget.classList.add('bg-blue-600', 'text-white', 'shadow');
+                currentFilter = e.currentTarget.dataset.filter;
+                applyFilterAndRender();
+            }));
+            document.getElementById('reset-app-button').addEventListener('click', resetApplication);
+            document.getElementById('dashboard-title').addEventListener('click', handleDangerZoneClick);
+            document.getElementById('add-charge-button').addEventListener('click', showAddChargeModal);
+            document.getElementById('close-charge-modal-button').addEventListener('click', () => chargeModal.classList.add('hidden'));
+            document.getElementById('cancel-charge-button').addEventListener('click', () => chargeModal.classList.add('hidden'));
+            document.getElementById('charge-form').addEventListener('submit', handleChargeFormSubmit);
+            document.getElementById('manager-tab').addEventListener('click', () => {
+                managerLoginForm.classList.remove('hidden');
+                consultationLoginForm.classList.add('hidden');
+                document.getElementById('manager-tab').classList.add('border-blue-600', 'text-blue-600');
+                document.getElementById('consultation-tab').classList.remove('border-blue-600', 'text-blue-600');
+            });
+            document.getElementById('consultation-tab').addEventListener('click', () => {
+                managerLoginForm.classList.add('hidden');
+                consultationLoginForm.classList.remove('hidden');
+                document.getElementById('consultation-tab').classList.add('border-blue-600', 'text-blue-600');
+                document.getElementById('manager-tab').classList.remove('border-blue-600', 'text-blue-600');
+            });
+            document.getElementById('consultation-login-button').addEventListener('click', handleConsultationLogin);
+            document.getElementById('session-date-filter').addEventListener('change', renderSessionsHistory);
+            document.getElementById('add-personnel-button').addEventListener('click', showAddPersonnelModal);
+            document.getElementById('close-personnel-modal-button').addEventListener('click', () => personnelModal.classList.add('hidden'));
+            document.getElementById('cancel-personnel-form-button').addEventListener('click', () => personnelModal.classList.add('hidden'));
+            document.getElementById('personnel-form').addEventListener('submit', handlePersonnelFormSubmit);
+            document.getElementById('personnel-list-container').addEventListener('click', (e) => {
+                const editButton = e.target.closest('.edit-personnel-btn');
+                if (editButton) showEditPersonnelModal(editButton.dataset.id);
+                const deleteButton = e.target.closest('.delete-personnel-btn');
+                if (deleteButton) deletePersonnel(deleteButton.dataset.id);
+                const endContractButton = e.target.closest('.end-contract-btn');
+                if (endContractButton) endContract(endContractButton.dataset.id);
+                const qrButton = e.target.closest('.qr-personnel-btn');
+                if (qrButton) showPersonnelCard(qrButton.dataset.id);
+                const historyButton = e.target.closest('.history-personnel-btn');
+                if (historyButton) showPersonnelSessionsHistoryModal(historyButton.dataset.id);
+            });
+            document.getElementById('close-personnel-sessions-modal').addEventListener('click', () => personnelSessionsModal.classList.add('hidden'));
+            document.getElementById('close-personnel-sessions-bottom-btn').addEventListener('click', () => personnelSessionsModal.classList.add('hidden'));
+        }
+
+        function startApp() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                setupEventListeners();
+                setupAuthObserver();
+                document.getElementById('session-date-filter').valueAsDate = new Date();
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+                document.body.innerHTML = `<div class="p-8 bg-red-100 text-red-800 rounded-lg m-4"><strong>Erreur de Configuration Firebase.</strong><br>Veuillez vérifier votre objet de configuration Firebase.</div>`;
+            }
+        }
+
+        function setupAuthObserver() {
+            onAuthStateChanged(auth, user => {
+                if (user) {
+                    isReadOnlyMode = false;
+                    currentUserId = user.uid;
+                    document.getElementById('user-email').textContent = user.email;
+                    document.getElementById('gym-id-text').textContent = user.uid;
+                    loginView.classList.add('hidden');
+                    mainView.classList.remove('hidden');
+                    listenToData();
+                    updateUIAccess();
+                    switchView('members'); 
+                } else if (!isReadOnlyMode) {
+                    currentUserId = null;
+                    loginView.classList.remove('hidden');
+                    mainView.classList.add('hidden');
+                    unsubscribeData();
+                    resetUI();
+                }
+            });
+        }
+        
+        function listenToData() {
+            if (!currentUserId) return;
+            listenToMembers();
+            listenToPayments();
+            listenToCharges();
+            listenToSessions();
+            listenToPersonnel();
+            listenToPersonnelSessions();
+        }
+
+        function unsubscribeData() {
+            unsubscribeMembers();
+            unsubscribePayments();
+            unsubscribeCharges();
+            unsubscribeSessions();
+            unsubscribePersonnel();
+            unsubscribePersonnelSessions();
+        }
+
+        function listenToPersonnel() {
+            unsubscribePersonnel();
+            const q = query(collection(db, "gyms", currentUserId, "personnel"), orderBy("lastname"));
+            unsubscribePersonnel = onSnapshot(q, snapshot => {
+                allPersonnel = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderPersonnelList();
+                document.getElementById('personnel-loader').classList.add('hidden');
+            }, (error) => console.error("Error listening to personnel:", error));
+        }
+        
+        function listenToPersonnelSessions() {
+            unsubscribePersonnelSessions();
+            const q = query(collection(db, "gyms", currentUserId, "personnel_sessions"), orderBy("entryTime", "desc"));
+            unsubscribePersonnelSessions = onSnapshot(q, snapshot => {
+                allPersonnelSessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            }, (error) => console.error("Error listening to personnel sessions:", error));
+        }
+
+        function listenToMembers() {
+            unsubscribeMembers();
+            const q = query(collection(db, "gyms", currentUserId, "members"));
+            unsubscribeMembers = onSnapshot(q, (snapshot) => {
+                allMembers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => `${a.lastname} ${a.firstname}`.localeCompare(`${b.lastname} ${b.firstname}`));
+                applyFilterAndRender();
+                updateDashboard();
+                document.getElementById('loader').classList.add('hidden');
+            }, (error) => console.error("Error listening to members:", error));
+        }
+        
+        function listenToPayments() {
+            unsubscribePayments();
+            const q = query(collection(db, "gyms", currentUserId, "payments"), orderBy("date_paiement", "desc"));
+            unsubscribePayments = onSnapshot(q, (snapshot) => {
+                 allPayments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                 renderFinancialHistory();
+                 updateDashboard();
+            }, (error) => console.error("Error listening to payments:", error));
+        }
+
+        function listenToCharges() {
+            unsubscribeCharges();
+            const q = query(collection(db, "gyms", currentUserId, "charges"), orderBy("date", "desc"));
+            unsubscribeCharges = onSnapshot(q, (snapshot) => {
+                allCharges = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderFinancialHistory();
+                updateDashboard();
+            }, (error) => console.error("Error listening to charges:", error));
+        }
+        
+        function listenToSessions() {
+            unsubscribeSessions();
+            const q = query(collection(db, "gyms", currentUserId, "sessions"), orderBy("entryTime", "desc"));
+            unsubscribeSessions = onSnapshot(q, (snapshot) => {
+                allSessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderSessionsHistory();
+                document.getElementById('sessions-loader').classList.add('hidden');
+            }, (error) => console.error("Error listening to sessions:", error));
+        }
+        
+        function resetUI() {
+            allMembers = [], allPayments = [], allCharges = [], allSessions = [], allPersonnel = [], allPersonnelSessions = [];
+            isReadOnlyMode = false;
+            renderMemberList([]);
+            renderFinancialHistory();
+            renderSessionsHistory();
+            renderPersonnelList();
+            updateDashboard();
+            ['email-input', 'password-input', 'gym-id-input', 'consultation-pin-input'].forEach(id => document.getElementById(id).value = '');
+        }
+
+        function applyFilterAndRender() {
+            const membersToRender = allMembers.filter(member => currentFilter === 'all' || getMemberStatus(member).key === currentFilter);
+            renderMemberList(membersToRender);
+        }
+
+        function renderMemberList(members) {
+            const container = document.getElementById('member-list-container');
+            const noMembersMsg = document.getElementById('no-members-message');
+            container.innerHTML = '';
+            noMembersMsg.classList.toggle('hidden', members.length > 0);
+            if(members.length === 0) noMembersMsg.textContent = allMembers.length > 0 ? "Aucun membre ne correspond à ce filtre." : "Aucun membre trouvé.";
+            
+            members.forEach(member => {
+                const { status, color, text } = getMemberStatus(member);
+                const memberDiv = document.createElement('div');
+                memberDiv.className = `p-3 rounded-lg flex items-center justify-between cursor-pointer hover:bg-slate-100 transition-colors border-l-4 ${color}`;
+                memberDiv.innerHTML = `<div><p class="font-bold text-lg">${member.firstname} ${member.lastname}</p><p class="text-sm text-slate-500">${member.phone}</p></div><div class="text-right"><span class="font-semibold text-sm ${text}">${status}</span></div>`;
+                memberDiv.onclick = () => showViewMemberModal(member.id);
+                container.appendChild(memberDiv);
+            });
+        }
+
+        function renderPersonnelList() {
+            const container = document.getElementById('personnel-list-container');
+            const noPersonnelMsg = document.getElementById('no-personnel-message');
+            container.innerHTML = '';
+            noPersonnelMsg.classList.toggle('hidden', allPersonnel.length > 0);
+            const formatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' });
+
+            allPersonnel.forEach(p => {
+                const status = p.status || 'Actif';
+                const statusColor = status === 'Actif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+                const div = document.createElement('div');
+                div.className = 'p-4 rounded-lg hover:bg-slate-50 transition-colors border';
+                div.innerHTML = `
+                    <div class="flex flex-wrap items-start justify-between gap-y-2">
+                        <div>
+                            <p class="font-bold text-base">${p.firstname} ${p.lastname}</p>
+                            <p class="text-slate-500 text-sm font-medium">${p.role || 'Rôle non défini'}</p>
+                            <p class="text-slate-500 text-sm">${p.phone || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <span class="text-xs font-semibold px-2 py-1 rounded-full ${statusColor}">${status}</span>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                         <div>
+                             <p class="font-semibold text-slate-500">Contrat</p>
+                             <p class="text-slate-700">${p.contractType || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-slate-500">Salaire</p>
+                             <p class="text-slate-700">${p.salary ? formatter.format(p.salary) : 'N/A'}</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t flex items-center justify-end gap-2 flex-wrap">
+                        <button class="history-personnel-btn text-xs font-bold bg-gray-100 text-gray-800 hover:bg-gray-200 px-3 py-1.5 rounded-md" data-id="${p.id}">Pointage</button>
+                        <button class="qr-personnel-btn text-xs font-bold bg-gray-100 text-gray-800 hover:bg-gray-200 px-3 py-1.5 rounded-md" data-id="${p.id}">QR Code</button>
+                        ${status === 'Actif' ? `<button class="end-contract-btn text-xs font-bold bg-yellow-100 text-yellow-800 hover:bg-yellow-200 px-3 py-1.5 rounded-md" data-id="${p.id}">Fin de contrat</button>` : ''}
+                        <button class="edit-personnel-btn text-xs font-bold bg-blue-100 text-blue-800 hover:bg-blue-200 px-3 py-1.5 rounded-md" data-id="${p.id}">Modifier</button>
+                        <button class="delete-personnel-btn text-xs font-bold bg-red-100 text-red-800 hover:bg-red-200 px-3 py-1.5 rounded-md" data-id="${p.id}">Supprimer</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function renderSessionsHistory() {
+            const container = document.getElementById('sessions-history-list');
+            const noSessionsMsg = document.getElementById('no-sessions-message');
+            container.innerHTML = '';
+            const filterDate = document.getElementById('session-date-filter').valueAsDate;
+            let filteredSessions = allSessions;
+
+            if (filterDate) {
+                filterDate.setHours(0,0,0,0);
+                const filterEnd = new Date(filterDate);
+                filterEnd.setHours(23,59,59,999);
+                filteredSessions = allSessions.filter(s => s.entryTime && s.entryTime.toDate() >= filterDate && s.entryTime.toDate() <= filterEnd);
+            }
+
+            noSessionsMsg.classList.toggle('hidden', filteredSessions.length > 0);
+
+            filteredSessions.forEach(session => {
+                const entry = session.entryTime?.toDate();
+                const exit = session.exitTime?.toDate();
+                let durationText = "En cours";
+                if (entry && exit) {
+                    const durationMs = exit - entry;
+                    const h = Math.floor(durationMs / 3600000);
+                    const m = Math.floor((durationMs % 3600000) / 60000);
+                    durationText = h > 0 ? `${h}h ${m}min` : `${m}min`;
+                }
+                const sessionDiv = document.createElement('div');
+                sessionDiv.className = 'grid grid-cols-4 gap-4 items-center p-2 rounded-md hover:bg-slate-100 text-sm';
+                sessionDiv.innerHTML = `<p class="font-semibold col-span-1">${session.membre_nom_complet}</p><p class="text-slate-600 col-span-1">${entry ? entry.toLocaleTimeString('fr-FR') : 'N/A'}</p><p class="text-slate-600 col-span-1">${exit ? exit.toLocaleTimeString('fr-FR') : '-'}</p><p class="text-slate-600 col-span-1">${durationText}</p>`;
+                container.appendChild(sessionDiv);
+            });
+        }
+
+        function getMemberStatus(member) {
+             if (member.status === 'suspendu') return { key: 'expired', status: 'Suspendu', color: 'border-slate-400', text: 'text-slate-600' };
+             if (member.memberType === 'subscription') {
+                if (!member.date_fin_abonnement) return { key: 'expired', status: 'Incomplet', color: 'border-slate-400', text: 'text-slate-600' };
+                const endDate = member.date_fin_abonnement.toDate();
+                const now = new Date();
+                now.setHours(0,0,0,0);
+                const diffDays = Math.ceil((endDate - now) / (1000 * 3600 * 24));
+                if (diffDays < 0) return { key: 'expired', status: 'Expiré', color: 'border-red-500', text: 'text-red-600' };
+                if (diffDays <= 7) return { key: 'expiring', status: 'Expire Bientôt', color: 'border-orange-400', text: 'text-orange-500' };
+                return { key: 'active', status: 'Actif', color: 'border-green-500', text: 'text-green-600' };
+            } else if (member.memberType === 'session') {
+                const remaining = member.seances_restantes || 0;
+                if (remaining <= 0) return { key: 'expired', status: '0 Séance', color: 'border-red-500', text: 'text-red-600' };
+                return { key: 'active', status: `${remaining} Séances`, color: 'border-blue-500', text: 'text-blue-600' };
+            }
+            return { key: 'expired', status: 'N/A', color: 'border-slate-400', text: 'text-slate-600' };
+        }
+
+        function updateUIAccess() {
+            const isManager = !isReadOnlyMode;
+            document.querySelectorAll('#add-member-button, #add-charge-button').forEach(el => el.style.display = isManager ? '' : 'none');
+            document.getElementById('gym-id-display').style.display = isManager ? 'inline-block' : 'none';
+
+            if (isManager) {
+                document.querySelector('[data-view="dashboard"]').style.display = 'none';
+                document.querySelector('[data-view="personnel"]').style.display = 'none';
+                document.querySelector('[data-view="members"]').style.display = '';
+                document.querySelector('[data-view="finance"]').style.display = '';
+                document.querySelector('[data-view="sessions"]').style.display = '';
+                document.getElementById('scan-qr-button').style.display = '';
+                document.getElementById('danger-zone').style.display = 'none';
+            } else {
+                document.querySelector('[data-view="dashboard"]').style.display = '';
+                document.querySelector('[data-view="personnel"]').style.display = '';
+                document.querySelector('[data-view="members"]').style.display = 'none';
+                document.querySelector('[data-view="finance"]').style.display = 'none';
+                document.querySelector('[data-view="sessions"]').style.display = 'none';
+                document.getElementById('scan-qr-button').style.display = 'none';
+                document.getElementById('danger-zone').style.display = '';
+            }
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('email-input').value;
+            const password = document.getElementById('password-input').value;
+            const errorP = document.getElementById('login-error');
+            const loginButton = document.getElementById('login-button');
+            errorP.textContent = '';
+            loginButton.disabled = true;
+
+            try { await signInWithEmailAndPassword(auth, email, password); } 
+            catch (error) {
+                console.error("Login failed:", error.code);
+                errorP.textContent = error.code === 'auth/invalid-credential' ? 'Email ou mot de passe incorrect.' : 'Une erreur de connexion est survenue.';
+            } finally { loginButton.disabled = false; }
+        }
+
+        async function handleConsultationLogin() {
+            const gymId = document.getElementById('gym-id-input').value.trim();
+            const pin = document.getElementById('consultation-pin-input').value;
+            const errorP = document.getElementById('consultation-login-error');
+            errorP.textContent = '';
+
+            if (!gymId || !pin) return errorP.textContent = "Veuillez remplir tous les champs.";
+            if (pin !== SUPERVISOR_PIN) return errorP.textContent = "Code PIN incorrect.";
+
+            try {
+                await getDoc(doc(db, "gyms", gymId));
+                isReadOnlyMode = true;
+                currentUserId = gymId;
+                document.getElementById('user-email').textContent = `Accès Propriétaire (ID: ${gymId.substring(0,6)}...)`;
+                loginView.classList.add('hidden');
+                mainView.classList.remove('hidden');
+                listenToData();
+                updateUIAccess();
+                switchView('dashboard');
+            } catch (error) {
+                console.error("Consultation login error:", error);
+                errorP.textContent = "ID de salle invalide ou introuvable.";
+            }
+        }
+        
+        async function handleLogout() {
+            if (isReadOnlyMode) {
+                isReadOnlyMode = false, currentUserId = null;
+                mainView.classList.add('hidden');
+                loginView.classList.remove('hidden');
+                unsubscribeData();
+                resetUI();
+            } else {
+                try { await signOut(auth); } catch (error) { console.error("Sign out failed:", error); }
+            }
+        }
+        
+        async function handleMemberFormSubmit(e) {
+            e.preventDefault();
+            if(isReadOnlyMode) return showAlert("Action non autorisée.", "error");
+            
+            const submitButton = document.getElementById('submit-form-button');
+            submitButton.disabled = true;
+
+            const id = document.getElementById('member-id').value;
+            const memberData = {
+                firstname: document.getElementById('member-firstname').value.trim(), lastname: document.getElementById('member-lastname').value.trim(), phone: document.getElementById('member-phone').value.trim(), email: document.getElementById('member-email').value.trim(), photoUrl: document.getElementById('member-photo').value.trim(), emergency_name: document.getElementById('member-emergency-name').value.trim(), emergency_phone: document.getElementById('member-emergency-phone').value.trim(), medical_info: document.getElementById('member-medical').value.trim(), notes: document.getElementById('member-notes').value.trim(),
+            };
+
+            try {
+                if (id) {
+                    if (await confirmWithPin()) {
+                        await updateDoc(doc(db, "gyms", currentUserId, "members", id), memberData);
+                        await showAlert('Membre mis à jour avec succès !', 'success');
+                        memberModal.classList.add('hidden');
+                    }
+                } else {
+                    const memberType = document.getElementById('member-type').value;
+                    memberData.memberType = memberType;
+                    memberData.status = 'actif'; // Default status for new members
+                    if (memberType === 'subscription') {
+                        const duration = parseInt(document.getElementById('subscription-duration').value, 10);
+                        if (isNaN(duration) || duration <= 0) throw new Error("Durée d'abonnement invalide.");
+                        const endDate = new Date(); endDate.setMonth(endDate.getMonth() + duration);
+                        memberData.date_fin_abonnement = endDate;
+                    } else {
+                        const sessions = parseInt(document.getElementById('session-count').value, 10);
+                        if (isNaN(sessions) || sessions <= 0) throw new Error("Nombre de séances invalide.");
+                        memberData.seances_restantes = sessions;
+                    }
+                    const amount = parseFloat(document.getElementById('member-amount').value);
+                    if (isNaN(amount) || amount < 0) throw new Error("Montant invalide.");
+
+                    const newMemberRef = await addDoc(collection(db, "gyms", currentUserId, "members"), {...memberData, createdAt: serverTimestamp()});
+                    const paymentDesc = memberType === 'subscription' ? `Abonnement ${document.getElementById('subscription-duration').value} mois` : `Carnet de ${document.getElementById('session-count').value} séances`;
+                    await logPayment(newMemberRef.id, `${memberData.firstname} ${memberData.lastname}`, amount, paymentDesc);
+                    
+                    await showAlert('Membre ajouté avec succès !', 'success');
+                    memberModal.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error("Error saving member:", error);
+                await showAlert(error.message || 'Erreur lors de l\'enregistrement.', 'error');
+            } finally {
+                submitButton.disabled = false;
+            }
+        }
+        
+        async function handlePersonnelFormSubmit(e) {
+            e.preventDefault();
+            const submitButton = document.getElementById('submit-personnel-form-button');
+            submitButton.disabled = true;
+
+            const id = document.getElementById('personnel-id').value;
+            const personnelData = {
+                firstname: document.getElementById('personnel-firstname').value.trim(),
+                lastname: document.getElementById('personnel-lastname').value.trim(),
+                phone: document.getElementById('personnel-phone').value.trim(),
+                role: document.getElementById('personnel-role').value.trim(),
+                address: document.getElementById('personnel-address').value.trim(),
+                idCard: document.getElementById('personnel-id-card').value.trim(),
+                hireDate: document.getElementById('personnel-hire-date').value,
+                contractType: document.getElementById('personnel-contract-type').value.trim(),
+                salary: parseFloat(document.getElementById('personnel-salary').value) || 0,
+                status: document.getElementById('personnel-status').value,
+            };
+
+            try {
+                if(!personnelData.firstname || !personnelData.lastname || !personnelData.hireDate) throw new Error("Veuillez remplir les champs obligatoires (prénom, nom, date d'embauche).");
+                if(!await confirmWithPin()) return;
+
+                if (id) {
+                    await updateDoc(doc(db, "gyms", currentUserId, "personnel", id), personnelData);
+                    await showAlert('Informations de l\'employé mises à jour.', 'success');
+                } else {
+                    personnelData.status = 'Actif';
+                    await addDoc(collection(db, "gyms", currentUserId, "personnel"), personnelData);
+                    await showAlert('Employé ajouté avec succès.', 'success');
+                }
+                personnelModal.classList.add('hidden');
+            } catch (error) {
+                console.error("Error saving personnel:", error);
+                await showAlert(error.message || 'Erreur lors de l\'enregistrement.', 'error');
+            } finally {
+                submitButton.disabled = false;
+            }
+        }
+
+        async function deleteMember(id) {
+            if(isReadOnlyMode) return showAlert("Action non autorisée.", "error");
+            if (await confirmWithPin() && await showConfirm('Êtes-vous sûr de vouloir supprimer ce membre et toutes ses données associées ? Cette action est irréversible.')) {
+                try {
+                    const batch = writeBatch(db);
+                    ["payments", "sessions"].forEach(async colName => {
+                        const q = query(collection(db, "gyms", currentUserId, colName), where("membre_id", "==", id));
+                        const snapshot = await getDocs(q);
+                        snapshot.forEach(doc => batch.delete(doc.ref));
+                    });
+                    batch.delete(doc(db, "gyms", currentUserId, "members", id));
+                    await batch.commit();
+                    await showAlert('Membre et données associées supprimés.', 'success');
+                    viewMemberModal.classList.add('hidden');
+                } catch (error) {
+                    console.error("Error deleting member: ", error);
+                    await showAlert('Erreur lors de la suppression.', 'error');
+                }
+            }
+        }
+        
+        async function deletePersonnel(id) {
+            if (await confirmWithPin() && await showConfirm('Êtes-vous sûr de vouloir supprimer cet employé ?')) {
+                try {
+                    await deleteDoc(doc(db, "gyms", currentUserId, "personnel", id));
+                    await showAlert('Employé supprimé.', 'success');
+                } catch (error) {
+                    console.error("Error deleting personnel: ", error);
+                    await showAlert('Erreur lors de la suppression.', 'error');
+                }
+            }
+        }
+
+        async function endContract(id) {
+             const staff = allPersonnel.find(p => p.id === id);
+             if (!staff) return;
+             if (await confirmWithPin() && await showConfirm(`Êtes-vous sûr de vouloir mettre fin au contrat de ${staff.firstname} ${staff.lastname} ?`)) {
+                try {
+                    await updateDoc(doc(db, "gyms", currentUserId, "personnel", id), { status: 'Contrat terminé' });
+                    await showAlert('Le statut du contrat a été mis à jour.', 'success');
+                } catch (error) {
+                    console.error("Error ending contract:", error);
+                    await showAlert('Erreur lors de la mise à jour du statut.', 'error');
+                }
+             }
+        }
+        
+        async function suspendSubscription(id, member) {
+            if (!member.date_fin_abonnement) return showAlert("Cet abonnement ne peut être suspendu (pas de date de fin).", "error");
+            if (await confirmWithPin() && await showConfirm('Voulez-vous vraiment suspendre cet abonnement ?')) {
+                const endDate = member.date_fin_abonnement.toDate();
+                const now = new Date();
+                const remainingTime = endDate > now ? endDate.getTime() - now.getTime() : 0;
+                const remainingDays = Math.ceil(remainingTime / (1000 * 3600 * 24));
+
+                try {
+                    await updateDoc(doc(db, "gyms", currentUserId, "members", id), {
+                        status: 'suspendu',
+                        remainingDaysOnSuspend: remainingDays
+                    });
+                    await showAlert('Abonnement suspendu.', 'success');
+                    showViewMemberModal(id);
+                } catch (error) {
+                    console.error("Error suspending subscription:", error);
+                    await showAlert('Erreur lors de la suspension.', 'error');
+                }
+            }
+        }
+
+        async function reactivateSubscription(id, member) {
+             if (await confirmWithPin() && await showConfirm('Voulez-vous réactiver cet abonnement ?')) {
+                const remainingDays = member.remainingDaysOnSuspend || 0;
+                const newEndDate = new Date();
+                newEndDate.setDate(newEndDate.getDate() + remainingDays);
+                
+                try {
+                    await updateDoc(doc(db, "gyms", currentUserId, "members", id), {
+                        status: 'actif',
+                        date_fin_abonnement: newEndDate,
+                        remainingDaysOnSuspend: 0
+                    });
+                    await showAlert('Abonnement réactivé.\nNouvelle date de fin : ' + newEndDate.toLocaleDateString('fr-FR'), 'success');
+                    showViewMemberModal(id);
+                } catch (error) {
+                    console.error("Error reactivating subscription:", error);
+                    await showAlert('Erreur lors de la réactivation.', 'error');
+                }
+             }
+        }
+
+        async function renewSubscription(memberId, member) {
+            if(isReadOnlyMode) return showAlert("Action non autorisée.", "error");
+            const months = await showPrompt("Combien de mois à ajouter ?", { defaultValue: "1", type: 'number' });
+            const duration = parseInt(months, 10);
+            if (!months || isNaN(duration) || duration <= 0) return;
+            
+            const amount = await showPrompt(`Quel est le montant payé pour ${months} mois ?`, { type: 'number' });
+            const price = parseFloat(amount);
+            if (!amount || isNaN(price) || price < 0) return;
+
+            let startDate = (member.date_fin_abonnement && member.date_fin_abonnement.toDate() > new Date()) ? member.date_fin_abonnement.toDate() : new Date();
+            const newEndDate = new Date(startDate.getTime());
+            newEndDate.setMonth(newEndDate.getMonth() + duration);
+
+            try {
+                await updateDoc(doc(db, "gyms", currentUserId, "members", memberId), { date_fin_abonnement: newEndDate });
+                await logPayment(memberId, `${member.firstname} ${member.lastname}`, price, `Renouvellement ${duration} mois`);
+                await showAlert('Abonnement renouvelé !', 'success');
+                showViewMemberModal(memberId);
+            } catch (error) {
+                console.error("Error renewing subscription: ", error);
+                await showAlert("Erreur lors du renouvellement.", 'error');
+            }
+        }
+        
+        async function addSessions(memberId, member) {
+            if(isReadOnlyMode) return showAlert("Action non autorisée.", "error");
+            const sessions = await showPrompt("Combien de séances à ajouter ?", { defaultValue: "10", type: 'number' });
+            const count = parseInt(sessions, 10);
+            if (!sessions || isNaN(count) || count <= 0) return;
+            
+            const amount = await showPrompt(`Quel est le montant payé pour ${sessions} séances ?`, { type: 'number' });
+            const price = parseFloat(amount);
+            if (!amount || isNaN(price) || price < 0) return;
+
+            const newSessionCount = (member.seances_restantes || 0) + count;
+             try {
+                await updateDoc(doc(db, "gyms", currentUserId, "members", memberId), { seances_restantes: newSessionCount });
+                await logPayment(memberId, `${member.firstname} ${member.lastname}`, price, `Achat de ${count} séances`);
+                await showAlert('Séances ajoutées !', 'success');
+                showViewMemberModal(memberId);
+            } catch (error) {
+                console.error("Error adding sessions: ", error);
+                await showAlert("Erreur lors de l'ajout de séances.", 'error');
+            }
+        }
+
+        async function deductSession(memberId, member) {
+            if(isReadOnlyMode) return showAlert("Action non autorisée.", "error");
+            const currentSessions = member.seances_restantes || 0;
+            if(currentSessions <= 0) return showAlert("Le solde de séances est déjà à zéro.", 'info');
+            
+            if(await showConfirm(`Voulez-vous décompter 1 séance ? Solde actuel : ${currentSessions}`)){
+                 try {
+                    await updateDoc(doc(db, "gyms", currentUserId, "members", memberId), { seances_restantes: currentSessions - 1 });
+                    await showAlert('Séance décomptée !', 'success');
+                    showViewMemberModal(memberId);
+                } catch (error) {
+                    console.error("Error deducting session: ", error);
+                    await showAlert("Erreur lors du décompte.", 'error');
+                }
+            }
+        }
+
+        async function logPayment(memberId, memberName, amount, description) {
+            await addDoc(collection(db, "gyms", currentUserId, "payments"), { membre_id: memberId, membre_nom_complet: memberName, montant: amount, description, date_paiement: serverTimestamp() });
+        }
+        
+        async function deleteTransaction(id) {
+            if(isReadOnlyMode) return showAlert("Action non autorisée.", "error");
+            if (await confirmWithPin() && await showConfirm('Êtes-vous sûr de vouloir supprimer cette transaction ?')) {
+                try {
+                    await deleteDoc(doc(db, "gyms", currentUserId, "payments", id));
+                    await showAlert('Transaction supprimée.', 'success');
+                } catch (error) {
+                    console.error("Error deleting transaction: ", error);
+                    await showAlert('Erreur lors de la suppression.', 'error');
+                }
+            }
+        }
+
+        async function resetApplication() {
+            if(!isReadOnlyMode) return showAlert("Action non autorisée. Seul le propriétaire peut réinitialiser l'application.", "error");
+            if (await showConfirm("Êtes-vous ABSOLUMENT SÛR de vouloir réinitialiser l'application ? Toutes les données seront supprimées DÉFINITIVEMENT.") && await confirmWithPin()) {
+                try {
+                    await showAlert("Suppression en cours...", "info");
+                    const batch = writeBatch(db);
+                    const collectionsToDelete = ["members", "payments", "charges", "sessions", "personnel", "personnel_sessions"];
+                    for(const col of collectionsToDelete) {
+                        const snapshot = await getDocs(collection(db, "gyms", currentUserId, col));
+                        snapshot.forEach(doc => batch.delete(doc.ref));
+                    }
+                    await batch.commit();
+                    await showAlert("L'application a été réinitialisée.", "success");
+                } catch (error) {
+                      console.error("Error resetting application: ", error);
+                      await showAlert('Erreur lors de la réinitialisation.', 'error');
+                }
+            }
+        }
+        
+        async function handleChargeFormSubmit(e) {
+            e.preventDefault();
+            if(isReadOnlyMode) return showAlert("Action non autorisée.", "error");
+            const submitButton = document.getElementById('submit-charge-button');
+            submitButton.disabled = true;
+            
+            try {
+                const description = document.getElementById('charge-description').value.trim();
+                const amount = parseFloat(document.getElementById('charge-amount').value);
+                if (!description || isNaN(amount) || amount <= 0) throw new Error("Veuillez remplir tous les champs avec des valeurs valides.");
+                if(!await confirmWithPin()) return;
+
+                await addDoc(collection(db, "gyms", currentUserId, "charges"), { description, montant: amount, date: serverTimestamp() });
+                await showAlert('Charge ajoutée avec succès !', 'success');
+                chargeModal.classList.add('hidden');
+            } catch (error) {
+                console.error("Error adding charge:", error);
+                await showAlert(error.message || "Erreur lors de l'ajout de la charge.", "error");
+            } finally {
+                submitButton.disabled = false;
+            }
+        }
+
+        async function deleteCharge(id) {
+            if(isReadOnlyMode) return showAlert("Action non autorisée.", "error");
+            if (await confirmWithPin() && await showConfirm('Êtes-vous sûr de vouloir supprimer cette charge ?')) {
+                try {
+                    await deleteDoc(doc(db, "gyms", currentUserId, "charges", id));
+                    await showAlert('Charge supprimée.', 'success');
+                } catch (error) {
+                    console.error("Error deleting charge: ", error);
+                    await showAlert('Erreur lors de la suppression.', 'error');
+                }
+            }
+        }
+
+        function handleSearch(e) {
+            const query = e.target.value.toLowerCase().trim();
+            const filteredMembers = allMembers.filter(m => !query || `${m.firstname} ${m.lastname}`.toLowerCase().includes(query) || m.phone.includes(query));
+            renderMemberList(filteredMembers);
+        }
+
+        function handleDangerZoneClick() {
+            if (isReadOnlyMode) {
+                const now = Date.now();
+                if (now - lastClickTimestamp > 1000) { dangerZoneClickCount = 0; }
+                lastClickTimestamp = now;
+                dangerZoneClickCount++;
+                if (dangerZoneClickCount >= 5) {
+                    document.getElementById('danger-zone').classList.toggle('hidden');
+                    dangerZoneClickCount = 0;
+                }
+            }
+        }
+        
+        function showAddMemberModal() {
+            if(isReadOnlyMode) return showAlert("Action non autorisée.", "error");
+            document.getElementById('member-form').reset();
+            document.getElementById('member-id').value = '';
+            document.getElementById('modal-title').textContent = 'Ajouter un Membre';
+            document.getElementById('new-member-fields').style.display = 'block';
+            memberModal.classList.remove('hidden');
+        }
+        
+        function showAddPersonnelModal() {
+            document.getElementById('personnel-form').reset();
+            document.getElementById('personnel-id').value = '';
+            document.getElementById('personnel-modal-title').textContent = 'Ajouter un Employé';
+            document.getElementById('personnel-status-container').classList.add('hidden');
+            personnelModal.classList.remove('hidden');
+        }
+
+        function showEditPersonnelModal(id) {
+            const staff = allPersonnel.find(p => p.id === id);
+            if (!staff) return;
+            document.getElementById('personnel-form').reset();
+            document.getElementById('personnel-modal-title').textContent = 'Modifier l\'Employé';
+            document.getElementById('personnel-id').value = staff.id;
+            document.getElementById('personnel-firstname').value = staff.firstname || '';
+            document.getElementById('personnel-lastname').value = staff.lastname || '';
+            document.getElementById('personnel-phone').value = staff.phone || '';
+            document.getElementById('personnel-address').value = staff.address || '';
+            document.getElementById('personnel-role').value = staff.role || '';
+            document.getElementById('personnel-id-card').value = staff.idCard || '';
+            document.getElementById('personnel-hire-date').value = staff.hireDate || '';
+            document.getElementById('personnel-contract-type').value = staff.contractType || '';
+            document.getElementById('personnel-salary').value = staff.salary || '';
+            document.getElementById('personnel-status-container').classList.remove('hidden');
+            document.getElementById('personnel-status').value = staff.status || 'Actif';
+            personnelModal.classList.remove('hidden');
+        }
+
+        function showEditMemberModal(member) {
+            document.getElementById('member-form').reset();
+            document.getElementById('modal-title').textContent = 'Modifier le Membre';
+            document.getElementById('member-id').value = member.id;
+            document.getElementById('member-firstname').value = member.firstname || '';
+            document.getElementById('member-lastname').value = member.lastname || '';
+            document.getElementById('member-phone').value = member.phone || '';
+            document.getElementById('member-email').value = member.email || '';
+            document.getElementById('member-photo').value = member.photoUrl || '';
+            document.getElementById('member-emergency-name').value = member.emergency_name || '';
+            document.getElementById('member-emergency-phone').value = member.emergency_phone || '';
+            document.getElementById('member-medical').value = member.medical_info || '';
+            document.getElementById('member-notes').value = member.notes || '';
+            document.getElementById('new-member-fields').style.display = 'none';
+            memberModal.classList.remove('hidden');
+        }
+
+        function showViewMemberModal(id) {
+            const member = allMembers.find(m => m.id === id);
+            if (!member) return;
+
+            const { status, color, text } = getMemberStatus(member);
+            const content = document.getElementById('view-member-content');
+            
+            let actionButtonsHtml = '';
+            if(!isReadOnlyMode) {
+                 let mainActionBtn = '';
+                 if (member.status === 'suspendu') {
+                    mainActionBtn = `<button id="reactivate-btn" class="flex-1 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors">Réactiver</button>`;
+                 } else if (member.memberType === 'subscription') {
+                    mainActionBtn = `<button id="renew-btn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Renouveler</button>
+                                     <button id="suspend-btn" class="flex-1 bg-yellow-500 text-white font-bold py-3 rounded-lg hover:bg-yellow-600 transition-colors">Suspendre</button>`;
+                 } else { // session type
+                    mainActionBtn = `<button id="deduct-btn" class="flex-1 bg-orange-500 text-white font-bold py-3 rounded-lg hover:bg-orange-600 transition-colors">Décompter 1 Séance</button>
+                                     <button id="add-sessions-btn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Ajouter des Séances</button>`;
+                 }
+                actionButtonsHtml = `<div class="flex gap-4 pt-4 border-t mt-4">${mainActionBtn}</div>
+                                     <div class="flex gap-4 pt-4 border-t mt-4">
+                                        <button id="show-card-btn" class="flex-1 bg-slate-600 text-white font-bold py-3 rounded-lg hover:bg-slate-700">Afficher Carte</button>
+                                        <button id="edit-btn" class="flex-1 bg-slate-200 font-bold py-3 rounded-lg hover:bg-slate-300">Modifier</button>
+                                        <button id="delete-btn" class="flex-1 bg-red-100 text-red-700 font-bold py-3 rounded-lg hover:bg-red-200">Supprimer</button>
+                                     </div>`;
+            }
+
+            content.innerHTML = `
+                <div class="flex items-start gap-4">
+                    <img src="${member.photoUrl || 'https://placehold.co/100x100/e2e8f0/475569?text=Photo'}" alt="Photo de membre" class="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/475569?text=Photo';">
+                    <div class="flex-1">
+                        <div class="flex items-start justify-between">
+                             <div>
+                                <h3 class="text-3xl font-bold">${member.firstname} ${member.lastname}</h3>
+                                <p class="text-slate-600">${member.phone}</p>
+                            </div>
+                            <div class="p-2 rounded-lg text-center ${color}">
+                                <span class="font-bold text-lg ${text}">${status}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div class="p-4 bg-slate-100 rounded-lg"><p class="text-sm text-slate-500">${member.memberType === 'subscription' ? 'Abonnement' : 'Carnet'}</p><p class="font-bold">${member.memberType === 'subscription' ? `Expire le : ${member.date_fin_abonnement ? member.date_fin_abonnement.toDate().toLocaleDateString('fr-FR') : 'N/A'}` : `Solde : ${member.seances_restantes || 0} séances`}</p></div>
+                    <div class="p-4 bg-slate-100 rounded-lg"><p class="text-sm text-slate-500">Email</p><p class="font-bold">${member.email || 'Non fourni'}</p></div>
+                </div>
+                <div class="p-4 bg-amber-100 rounded-lg"><h4 class="font-bold mb-2 text-amber-800">Contact d'Urgence</h4><p><strong class="font-semibold">Nom:</strong> ${member.emergency_name || 'N/A'}</p><p><strong class="font-semibold">Tél:</strong> ${member.emergency_phone || 'N/A'}</p></div>
+                <div class="p-4 bg-slate-100 rounded-lg"><h4 class="font-bold mb-2">Infos Médicales & Notes</h4><p class="whitespace-pre-wrap"><strong class="font-semibold">Médical:</strong> ${member.medical_info || 'N/A'}</p><p class="whitespace-pre-wrap mt-2"><strong class="font-semibold">Notes:</strong> ${member.notes || 'N/A'}</p></div>
+                ${actionButtonsHtml}
+                <div class="flex justify-end pt-4 border-t mt-4"><button id="close-view-modal-bottom-btn" class="bg-slate-200 font-bold py-2 px-6 rounded-lg hover:bg-slate-300 transition-colors">Fermer</button></div>`;
+
+            document.getElementById('close-view-modal-bottom-btn').onclick = () => viewMemberModal.classList.add('hidden');
+            if (!isReadOnlyMode) {
+                document.getElementById('edit-btn').onclick = () => { viewMemberModal.classList.add('hidden'); showEditMemberModal(member); };
+                document.getElementById('delete-btn').onclick = () => deleteMember(id);
+                document.getElementById('show-card-btn').onclick = () => showMemberCard(member);
+                if (member.status === 'suspendu') {
+                    document.getElementById('reactivate-btn').onclick = () => reactivateSubscription(id, member);
+                } else if (member.memberType === 'subscription') {
+                    document.getElementById('renew-btn').onclick = () => renewSubscription(id, member);
+                    document.getElementById('suspend-btn').onclick = () => suspendSubscription(id, member);
+                } else {
+                    document.getElementById('add-sessions-btn').onclick = () => addSessions(id, member);
+                    document.getElementById('deduct-btn').onclick = () => deductSession(id, member);
+                }
+            }
+            viewMemberModal.classList.remove('hidden');
+        }
+
+        function confirmWithPin() {
+            return new Promise((resolve) => {
+                pinResolve = resolve;
+                const pinInput = document.getElementById('pin-input');
+                pinInput.value = '';
+                document.getElementById('pin-error').textContent = '';
+                pinModal.classList.remove('hidden');
+                pinInput.focus();
+            });
+        }
+        
+        function showAlert(message, type = 'info') {
+            return new Promise(resolve => {
+                alertResolve = resolve;
+                document.getElementById('alert-message').innerHTML = message.replace(/\n/g, '<br>');
+                const iconDiv = document.getElementById('alert-icon');
+                if (type === 'success') iconDiv.innerHTML = `<i class="ph-bold ph-check-circle text-5xl text-green-500"></i>`;
+                else if (type === 'error') iconDiv.innerHTML = `<i class="ph-bold ph-x-circle text-5xl text-red-500"></i>`;
+                else iconDiv.innerHTML = `<i class="ph-bold ph-info text-5xl text-blue-500"></i>`;
+                alertModal.classList.remove('hidden');
+            }).then(() => alertModal.classList.add('hidden'));
+        }
+
+        function showConfirm(message) {
+            return new Promise(resolve => {
+                confirmResolve = resolve;
+                document.getElementById('confirm-message').textContent = message;
+                confirmModal.classList.remove('hidden');
+            }).then(result => { confirmModal.classList.add('hidden'); return result; });
+        }
+
+        function showPrompt(message, options = {}) {
+            return new Promise(resolve => {
+                promptResolve = resolve;
+                const input = document.getElementById('prompt-input');
+                input.type = options.type || 'text';
+                input.value = options.defaultValue || '';
+                document.getElementById('prompt-message').textContent = message;
+                promptModal.classList.remove('hidden');
+                input.focus();
+            }).then(result => { promptModal.classList.add('hidden'); return result; });
+        }
+        
+        // --- QR CODE & CARD ---
+        let html5QrCode = null;
+        function startQrScanner() {
+            document.getElementById('qr-scanner-title').textContent = 'Scannez un QR Code';
+            qrScannerModal.classList.remove('hidden');
+            html5QrCode = new Html5Qrcode("qr-reader");
+
+            const qrCodeSuccessCallback = async (decodedText) => {
+                stopQrScanner();
+                const member = allMembers.find(m => m.id === decodedText);
+                const staff = allPersonnel.find(p => p.id === decodedText);
+
+                if (member) {
+                    await handleMemberScan(member.id);
+                } else if (staff) {
+                    await handlePersonnelScan(staff.id);
+                } else {
+                    await showAlert("QR code non reconnu.", "error");
+                }
+            };
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, qrCodeSuccessCallback).catch(err => console.log(`Unable to start scanning, error=${err}`));
+        }
+        
+        async function handleMemberScan(memberId) {
+             const member = allMembers.find(m => m.id === memberId);
+             if (!member) return;
+
+             if (isReadOnlyMode) {
+                 return await showAlert(`Membre: ${member.firstname} ${member.lastname}\nStatut: ${getMemberStatus(member).status}`, 'info');
+             }
+
+             if (member.status === 'suspendu') {
+                await showAlert(`Accès refusé pour ${member.firstname}.\nStatut : Suspendu.`, "error");
+                return showViewMemberModal(member.id);
+             }
+
+             const sessionsRef = collection(db, "gyms", currentUserId, "sessions");
+             const q = query(sessionsRef, where("membre_id", "==", member.id), where("exitTime", "==", null));
+             const querySnapshot = await getDocs(q);
+
+             if (!querySnapshot.empty) {
+                 const sessionDoc = querySnapshot.docs[0];
+                 await updateDoc(sessionDoc.ref, { exitTime: serverTimestamp() });
+                 const durationMs = new Date() - sessionDoc.data().entryTime.toDate();
+                 const h = Math.floor(durationMs / 3600000);
+                 const m = Math.floor((durationMs % 3600000) / 60000);
+                 const durationText = h > 0 ? `${h}h ${m}min` : `${m}min`;
+                 await showAlert(`Au revoir ${member.firstname} !\nDurée de la séance : ${durationText}.`, 'info');
+             } else {
+                 const status = getMemberStatus(member);
+                 if (status.key === 'expired') {
+                     await showAlert(`Accès refusé pour ${member.firstname}.\nStatut : ${status.status}.`, "error");
+                     return showViewMemberModal(member.id);
+                 }
+                 try {
+                     if (member.memberType === 'session') await updateDoc(doc(db, "gyms", currentUserId, "members", member.id), { seances_restantes: (member.seances_restantes || 0) - 1 });
+                     await addDoc(sessionsRef, { membre_id: member.id, membre_nom_complet: `${member.firstname} ${member.lastname}`, entryTime: serverTimestamp(), exitTime: null });
+                     let welcomeMessage = `Bienvenue ${member.firstname} !\nStatut: ${status.status}`;
+                     if (member.memberType === 'subscription') welcomeMessage += `\nFin: ${member.date_fin_abonnement.toDate().toLocaleDateString('fr-FR')}`;
+                     await showAlert(welcomeMessage, 'success');
+                 } catch (error) {
+                     console.error("Erreur d'enregistrement d'entrée:", error);
+                     await showAlert("Erreur lors de l'enregistrement de l'entrée.", "error");
+                 }
+             }
+        }
+
+        async function handlePersonnelScan(personnelId) {
+            const staff = allPersonnel.find(p => p.id === personnelId);
+            if (!staff) return;
+
+            const sessionsRef = collection(db, "gyms", currentUserId, "personnel_sessions");
+            const q = query(sessionsRef, where("personnel_id", "==", staff.id), where("exitTime", "==", null));
+            const querySnapshot = await getDocs(q);
+
+            let alertMessage = '';
+            let alertType = 'success';
+
+            if (!querySnapshot.empty) {
+                const sessionDoc = querySnapshot.docs[0];
+                await updateDoc(sessionDoc.ref, { exitTime: serverTimestamp() });
+                const durationMs = new Date() - sessionDoc.data().entryTime.toDate();
+                const h = Math.floor(durationMs / 3600000);
+                const m = Math.floor((durationMs % 3600000) / 60000);
+                const durationText = h > 0 ? `${h}h ${m}min` : `${m}min`;
+                alertMessage = `Départ enregistré pour ${staff.firstname}.\nTemps de travail : ${durationText}.`;
+                alertType = 'info';
+            } else {
+                 await addDoc(sessionsRef, { personnel_id: staff.id, personnel_nom_complet: `${staff.firstname} ${staff.lastname}`, entryTime: serverTimestamp(), exitTime: null });
+                 alertMessage = `Arrivée enregistrée pour ${staff.firstname}.`;
+            }
+
+            if(isReadOnlyMode) {
+                await showAlert(alertMessage, alertType);
+            } else {
+                await showAlert("Pointage enregistré.", 'success');
+            }
+        }
+
+        function stopQrScanner() {
+            if(html5QrCode?.isScanning) html5QrCode.stop().catch(err => console.log("QR scanner stop failed", err));
+            qrScannerModal.classList.add('hidden');
+        }
+
+        function showMemberCard(member) {
+            const cardTitle = `Carte de Membre`;
+            const cardSubtitle = `Membre #${member.id.substring(0, 6)}`;
+            generateCard(member.id, `${member.firstname} ${member.lastname}`, cardTitle, cardSubtitle);
+        }
+
+        function showPersonnelCard(personnelId) {
+            const staff = allPersonnel.find(p => p.id === personnelId);
+            if (!staff) return;
+            const cardTitle = `Badge Personnel`;
+            const cardSubtitle = `${staff.role || 'Employé'}`;
+            generateCard(staff.id, `${staff.firstname} ${staff.lastname}`, cardTitle, cardSubtitle);
+        }
+
+        function generateCard(id, name, title, subtitle) {
+            const displayArea = document.getElementById('card-display-area');
+            displayArea.innerHTML = `<div id="card-to-process" class="bg-white p-4 text-center"><div class="flex items-center justify-center mb-4"><i class="ph-bold ph-barbell text-3xl text-black"></i><h2 class="text-xl font-bold ml-2">FIT TRACK</h2></div><p class="font-semibold text-gray-500">${title}</p><h3 class="text-2xl font-bold">${name}</h3><p class="text-gray-600 mb-4">${subtitle}</p><canvas id="qr-canvas"></canvas></div>`;
+            
+            QRCode.toCanvas(document.getElementById('qr-canvas'), id, { width: 200 }, (error) => {
+                if (error) return console.error(error);
+                cardModal.classList.remove('hidden');
+                document.getElementById('download-card-btn').onclick = () => html2canvas(document.getElementById('card-to-process')).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = `carte_${name.replace(' ', '_')}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                });
+                document.getElementById('print-card-btn-action').onclick = () => {
+                    document.body.classList.add('printing');
+                    window.print();
+                    document.body.classList.remove('printing');
+                };
+            });
+        }
+        
+        function showPersonnelSessionsHistoryModal(personnelId) {
+            const staff = allPersonnel.find(p => p.id === personnelId);
+            if (!staff) return;
+            document.getElementById('personnel-sessions-title').textContent = `Pointage de ${staff.firstname} ${staff.lastname}`;
+            const listContainer = document.getElementById('personnel-sessions-list');
+            listContainer.innerHTML = '';
+
+            const sessions = allPersonnelSessions.filter(s => s.personnel_id === personnelId).slice(0, 50); // Get last 50 sessions
+            if (sessions.length === 0) {
+                listContainer.innerHTML = `<p class="text-center text-slate-500 py-4">Aucun pointage enregistré.</p>`;
+            } else {
+                sessions.forEach(session => {
+                    const entry = session.entryTime?.toDate();
+                    const exit = session.exitTime?.toDate();
+                    let durationText = "En cours";
+                    if (entry && exit) {
+                        const durationMs = exit - entry;
+                        const h = Math.floor(durationMs / 3600000);
+                        const m = Math.floor((durationMs % 3600000) / 60000);
+                        durationText = h > 0 ? `${h}h ${m}min` : `${m}min`;
+                    }
+                    const div = document.createElement('div');
+                    div.className = 'grid grid-cols-4 gap-4 items-center p-2 rounded-md even:bg-slate-100 text-sm';
+                    div.innerHTML = `<p class="font-semibold">${entry?.toLocaleDateString('fr-FR')}</p><p>${entry?.toLocaleTimeString('fr-FR')}</p><p>${exit?.toLocaleTimeString('fr-FR') || '-'}</p><p>${durationText}</p>`;
+                    listContainer.appendChild(div);
+                });
+            }
+            personnelSessionsModal.classList.remove('hidden');
+        }
+        
+        // --- FINANCE & REPORTS ---
+        function updateDashboard() {
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            let activeCount = 0, expiringCount = 0, newThisMonthCount = 0, revenueMonth = 0, chargesMonth = 0;
+            allMembers.forEach(m => {
+                const statusKey = getMemberStatus(m).key;
+                if (statusKey === 'active') activeCount++;
+                if (statusKey === 'expiring') expiringCount++;
+                if (m.createdAt && m.createdAt.toDate() >= startOfMonth) newThisMonthCount++;
+            });
+            allPayments.forEach(p => { if (p.date_paiement && p.date_paiement.toDate() >= startOfMonth) revenueMonth += p.montant; });
+            allCharges.forEach(c => { if (c.date && c.date.toDate() >= startOfMonth) chargesMonth += c.montant; });
+            const format = (val) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(val);
+            document.getElementById('db-active-members').textContent = activeCount;
+            document.getElementById('db-expiring-soon').textContent = expiringCount;
+            document.getElementById('db-new-this-month').textContent = newThisMonthCount;
+            document.getElementById('db-revenue-month').textContent = format(revenueMonth);
+            document.getElementById('db-charges-month').textContent = format(chargesMonth);
+            document.getElementById('db-net-profit-month').textContent = format(revenueMonth - chargesMonth);
+        }
+
+        function renderFinancialHistory() {
+            const container = document.getElementById('financial-history-list');
+            const noTransacMsg = document.getElementById('no-transactions-message');
+            container.innerHTML = '';
+            const revenues = allPayments.map(p => ({ type: 'revenue', id: p.id, date: p.date_paiement?.toDate(), desc: `${p.membre_nom_complet} - ${p.description}`, amount: p.montant }));
+            const expenses = allCharges.map(c => ({ type: 'expense', id: c.id, date: c.date?.toDate(), desc: c.description, amount: c.montant }));
+            const history = [...revenues, ...expenses].sort((a, b) => b.date - a.date);
+            noTransacMsg.classList.toggle('hidden', history.length > 0);
+            const formatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' });
+            history.forEach(item => {
+                const isRevenue = item.type === 'revenue';
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center p-2 rounded-md hover:bg-slate-100';
+                div.innerHTML = `<div><p class="font-semibold">${item.desc}</p><p class="text-sm text-slate-500">${item.date?.toLocaleDateString('fr-FR')}</p></div><p class="font-bold mr-4 ${isRevenue ? 'text-green-600' : 'text-red-600'}">${isRevenue ? '+' : '-'} ${formatter.format(item.amount)}</p><button class="delete-transaction-btn text-slate-400 hover:text-red-600 p-1" data-id="${item.id}" data-type="${item.type}"><i class="ph-bold ph-trash text-lg"></i></button>`;
+                container.appendChild(div);
+            });
+        }
+        
+        async function downloadReport() {
+            let startDate = document.getElementById('report-start-date').valueAsDate;
+            let endDate = document.getElementById('report-end-date').valueAsDate;
+            if (!startDate || !endDate) return showAlert("Veuillez sélectionner une date de début et de fin.", "error");
+            endDate.setHours(23, 59, 59, 999);
+            const type = document.getElementById('report-type').value;
+            let data, headers, filename;
+            if (type === 'payments') {
+                headers = ['Date', 'Type', 'Description', 'Montant'];
+                const filteredPayments = allPayments.filter(p => p.date_paiement?.toDate() >= startDate && p.date_paiement?.toDate() <= endDate).map(p => ['Revenu', p.date_paiement.toDate(), `${p.membre_nom_complet} - ${p.description}`, p.montant]);
+                const filteredCharges = allCharges.filter(c => c.date?.toDate() >= startDate && c.date?.toDate() <= endDate).map(c => ['Charge', c.date.toDate(), c.description, -c.montant]);
+                data = [...filteredPayments, ...filteredCharges].sort((a,b) => a[1] - b[1]).map(r => [r[1].toLocaleDateString('fr-FR'), r[0], r[2], r[3]]);
+                filename = `Rapport_Financier_${startDate.toISOString().split('T')[0]}.csv`;
+            } else {
+                 headers = ['Nom', 'Prénom', 'Téléphone', 'Email', 'Type', 'Statut', 'Date Fin / Séances Restantes'];
+                 data = allMembers.map(m => {
+                    const statusInfo = getMemberStatus(m);
+                    const value = m.memberType === 'subscription' ? (m.date_fin_abonnement?.toDate().toLocaleDateString('fr-FR') || 'N/A') : m.seances_restantes;
+                    return [m.lastname, m.firstname, m.phone, m.email, m.memberType, statusInfo.status, value];
+                 });
+                filename = `Liste_Membres_${new Date().toISOString().split('T')[0]}.csv`;
+            }
+            if(data.length === 0) return showAlert("Aucune donnée à exporter.", "info");
+            exportToCsv(filename, [headers, ...data]);
+        }
+
+        function exportToCsv(filename, rows) {
+            const processRow = row => row.map(val => {
+                let innerValue = val === null || val === undefined ? '' : String(val);
+                if (String(innerValue).includes(',')) innerValue = '"' + innerValue.replace(/"/g, '""') + '"';
+                return innerValue;
+            }).join(';') + '\n';
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF" + rows.map(processRow).join('');
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        function switchView(viewName) {
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                const isSelected = btn.dataset.view === viewName;
+                btn.classList.toggle('bg-white', isSelected);
+                btn.classList.toggle('text-blue-600', isSelected);
+                btn.classList.toggle('shadow', isSelected);
+                btn.classList.toggle('text-slate-600', !isSelected);
+            });
+            ['dashboard', 'members', 'finance', 'sessions', 'personnel'].forEach(section => {
+                document.getElementById(`${section}-section`).classList.toggle('hidden', section !== viewName);
+            });
+        }
+
+        function showAddChargeModal() {
+            if(isReadOnlyMode) return showAlert("Action non autorisée.", "error");
+            document.getElementById('charge-form').reset();
+            chargeModal.classList.remove('hidden');
+        }
+
+        document.addEventListener('DOMContentLoaded', startApp);
+
+    </script>
+</body>
+</html>
+
+
