@@ -104,7 +104,7 @@
                 </div>
                 <p class="text-xl text-slate-300 mb-8">Veuillez scanner votre QR code pour entrer.</p>
                 
-                <div id="kiosk-qr-reader" class="w-full max-w-sm md:max-w-md bg-slate-800 rounded-lg overflow-hidden shadow-2xl"></div>
+                <div id="kiosk-qr-reader" class="w-full max-w-sm md:max-w-md bg-slate-800 rounded-lg overflow-hidden shadow-2xl" style="min-height: 250px;"></div>
 
                 <div id="kiosk-result" class="mt-8 text-2xl font-bold h-24"></div>
 
@@ -526,6 +526,10 @@
         let lastClickTimestamp = 0;
         let unsubscribeMembers = () => {}, unsubscribePayments = () => {}, unsubscribeCharges = () => {}, unsubscribeSessions = () => {}, unsubscribePersonnel = () => {}, unsubscribePersonnelSessions = () => {};
         let unsubscribeScanNotifications = () => {};
+
+        // --- FULL SCRIPT ---
+        // NOTE: Functions from setupEventListeners to the end are included here.
+        // The following is the complete JavaScript logic for the application.
 
         function setupEventListeners() {
             document.getElementById('login-button').addEventListener('click', handleLogin);
@@ -1594,22 +1598,35 @@
         let kioskHtml5QrCode = null;
 
         function startKioskScanner(gymId) {
-            document.getElementById('kiosk-result').innerHTML = '';
+            const resultDiv = document.getElementById('kiosk-result');
+            resultDiv.innerHTML = ''; 
+
+            if (kioskHtml5QrCode && kioskHtml5QrCode.isScanning) {
+                kioskHtml5QrCode.stop().catch(err => console.error("Failed to stop previous scanner instance:", err));
+            }
+
             kioskHtml5QrCode = new Html5Qrcode("kiosk-qr-reader");
             const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-            
-            const qrCodeSuccessCallback = async (decodedText) => {
-                if (kioskHtml5QrCode?.isScanning) {
-                    try { await kioskHtml5QrCode.stop(); } catch(e) { console.warn(e); }
-                }
-                handleKioskScan(decodedText, gymId);
-            };
 
+            const qrCodeSuccessCallback = (decodedText) => {
+                if (kioskHtml5QrCode && kioskHtml5QrCode.isScanning) {
+                    kioskHtml5QrCode.stop().then(() => {
+                         handleKioskScan(decodedText, gymId);
+                    }).catch(err => {
+                        console.error("Failed to stop scanner after success:", err);
+                        handleKioskScan(decodedText, gymId);
+                    });
+                }
+            };
+            
             kioskHtml5QrCode.start({ facingMode: "user" }, config, qrCodeSuccessCallback)
-                .catch(err => {
-                    console.error("Impossible de démarrer le scanner en mode selfie, tentative avec la caméra arrière.", err);
+                .catch((err) => {
+                    console.warn("Front camera failed, trying rear camera:", err);
                     kioskHtml5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
-                        .catch(err2 => document.getElementById('kiosk-result').innerHTML = `<p class="text-red-400">Erreur Caméra: Impossible d'accéder à la caméra.</p>`);
+                        .catch((err2) => {
+                            console.error("All cameras failed to start:", err2);
+                            resultDiv.innerHTML = `<p class="text-red-400">Erreur: Impossible d'accéder à la caméra. Vérifiez les permissions.</p>`;
+                        });
                 });
         }
 
