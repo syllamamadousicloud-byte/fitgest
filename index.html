@@ -527,9 +527,8 @@
         let unsubscribeMembers = () => {}, unsubscribePayments = () => {}, unsubscribeCharges = () => {}, unsubscribeSessions = () => {}, unsubscribePersonnel = () => {}, unsubscribePersonnelSessions = () => {};
         let unsubscribeScanNotifications = () => {};
 
-        // --- FULL SCRIPT ---
-        // NOTE: Functions from setupEventListeners to the end are included here.
-        // The following is the complete JavaScript logic for the application.
+        // --- ENTIRE SCRIPT LOGIC ---
+        // The full JavaScript code is placed here, including all functions.
 
         function setupEventListeners() {
             document.getElementById('login-button').addEventListener('click', handleLogin);
@@ -783,6 +782,7 @@
         }
 
         function applyFilterAndRender() {
+            if(!document.getElementById('member-list-container')) return;
             const membersToRender = allMembers.filter(member => currentFilter === 'all' || getMemberStatus(member).key === currentFilter);
             renderMemberList(membersToRender);
         }
@@ -806,6 +806,7 @@
 
         function renderPersonnelList() {
             const container = document.getElementById('personnel-list-container');
+            if (!container) return;
             const noPersonnelMsg = document.getElementById('no-personnel-message');
             container.innerHTML = '';
             noPersonnelMsg.classList.toggle('hidden', allPersonnel.length > 0);
@@ -851,6 +852,7 @@
 
         function renderSessionsHistory() {
             const container = document.getElementById('sessions-history-list');
+            if(!container) return;
             const noSessionsMsg = document.getElementById('no-sessions-message');
             container.innerHTML = '';
             const filterDate = document.getElementById('session-date-filter').valueAsDate;
@@ -1599,36 +1601,48 @@
 
         function startKioskScanner(gymId) {
             const resultDiv = document.getElementById('kiosk-result');
-            resultDiv.innerHTML = ''; 
+            resultDiv.innerHTML = '<p class="text-slate-400">Démarrage de la caméra...</p>';
 
             if (kioskHtml5QrCode && kioskHtml5QrCode.isScanning) {
-                kioskHtml5QrCode.stop().catch(err => console.error("Failed to stop previous scanner instance:", err));
+                kioskHtml5QrCode.stop().catch(err => {
+                    console.error("Erreur lors de l'arrêt du scanner précédent:", err);
+                });
             }
-
             kioskHtml5QrCode = new Html5Qrcode("kiosk-qr-reader");
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
             const qrCodeSuccessCallback = (decodedText) => {
                 if (kioskHtml5QrCode && kioskHtml5QrCode.isScanning) {
                     kioskHtml5QrCode.stop().then(() => {
-                         handleKioskScan(decodedText, gymId);
+                        handleKioskScan(decodedText, gymId);
                     }).catch(err => {
-                        console.error("Failed to stop scanner after success:", err);
+                        console.error("Échec de l'arrêt du scanner après succès:", err);
                         handleKioskScan(decodedText, gymId);
                     });
                 }
             };
             
+            const config = {
+                fps: 10,
+                qrbox: (viewfinderWidth, viewfinderHeight) => {
+                    let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                    let qrboxSize = Math.floor(minEdge * 0.7);
+                    return { width: qrboxSize, height: qrboxSize };
+                },
+                rememberLastUsedCamera: false
+            };
+
             kioskHtml5QrCode.start({ facingMode: "user" }, config, qrCodeSuccessCallback)
-                .catch((err) => {
-                    console.warn("Front camera failed, trying rear camera:", err);
+                .catch(() => {
+                    console.warn("La caméra frontale a échoué. Essai avec la caméra arrière.");
+                    resultDiv.innerHTML = '<p class="text-yellow-400">Caméra frontale non trouvée, essai avec la caméra arrière...</p>';
                     kioskHtml5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
-                        .catch((err2) => {
-                            console.error("All cameras failed to start:", err2);
-                            resultDiv.innerHTML = `<p class="text-red-400">Erreur: Impossible d'accéder à la caméra. Vérifiez les permissions.</p>`;
+                        .catch((err) => {
+                            console.error("Toutes les caméras ont échoué.", err);
+                            resultDiv.innerHTML = `<p class="text-red-400">Erreur: Impossible d'accéder à une caméra. Veuillez vérifier les permissions.</p>`;
                         });
                 });
         }
+
 
         async function handleKioskScan(scannedId, gymId) {
             const resultDiv = document.getElementById('kiosk-result');
@@ -1921,7 +1935,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', startApp);
-
     </script>
 </body>
 </html>
