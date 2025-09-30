@@ -227,16 +227,26 @@
     </div>
     
     <!-- Kiosk View -->
-    <div id="kiosk-view" class="fixed inset-0 bg-slate-900 flex-col items-center justify-center p-4 hidden z-[100]">
-        <button id="reset-kiosk-button" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"><i class="ph-bold ph-gear text-3xl"></i></button>
-        <div id="kiosk-reader" class="w-full max-w-lg md:w-96 md:h-96 bg-slate-800 rounded-lg overflow-hidden relative shadow-2xl">
-            <div class="absolute inset-0 border-4 border-dashed border-slate-500 rounded-lg m-4"></div>
+    <div id="kiosk-view" class="fixed inset-0 bg-slate-900 flex flex-col items-center p-4 sm:p-8 justify-between z-[100] hidden">
+        <!-- Top Part: Reset Button + Title -->
+        <div class="w-full max-w-xl flex justify-between items-center">
+             <h2 class="text-2xl font-bold text-white">Kiosque d'Enregistrement</h2>
+            <button id="reset-kiosk-button" class="text-slate-400 hover:text-white transition-colors"><i class="ph-bold ph-gear text-3xl"></i></button>
         </div>
-        <div id="kiosk-message" class="mt-8 text-center text-white h-24">
-            <p class="text-3xl font-bold"></p>
-            <p class="text-lg"></p>
+
+        <!-- Middle Part: Scanner -->
+        <div id="kiosk-reader" class="w-full max-w-md aspect-square bg-slate-800 rounded-lg overflow-hidden relative shadow-2xl my-4">
+            <div id="kiosk-reader-border" class="absolute inset-0 border-4 border-dashed border-slate-500 rounded-lg m-4 transition-colors duration-300"></div>
         </div>
-        <button id="close-kiosk-button" class="mt-8 bg-white text-slate-800 font-bold py-3 px-6 rounded-lg hover:bg-slate-200">Quitter le Kiosque</button>
+
+        <!-- Bottom Part: Message + Quit Button -->
+        <div class="w-full max-w-xl text-center">
+             <div id="kiosk-message" class="text-white h-24 flex flex-col justify-center items-center">
+                 <p class="text-3xl font-bold"></p>
+                 <p class="text-lg"></p>
+            </div>
+            <button id="close-kiosk-button" class="mt-4 bg-white text-slate-800 font-bold py-3 px-6 rounded-lg hover:bg-slate-200">Quitter le Kiosque</button>
+        </div>
     </div>
 
 
@@ -561,7 +571,7 @@
                     const statusEl = document.getElementById('live-scan-status');
 
                     nameEl.textContent = data.name;
-                    statusEl.textContent = data.status;
+                    statusEl.innerHTML = data.status; // Use innerHTML to render line breaks
 
                     if(data.type === 'success') statusEl.className = 'text-sm font-medium text-green-600';
                     else if(data.type === 'error') statusEl.className = 'text-sm font-medium text-red-600';
@@ -734,8 +744,9 @@
                     durationText = h > 0 ? `${h}h ${m}min` : `${m}min`;
                 }
                 const sessionDiv = document.createElement('div');
-                sessionDiv.className = 'grid grid-cols-4 gap-4 items-center p-2 rounded-md hover:bg-slate-100 text-sm';
+                sessionDiv.className = 'grid grid-cols-4 gap-4 items-center p-2 rounded-md hover:bg-slate-100 text-sm cursor-pointer';
                 sessionDiv.innerHTML = `<p class="font-semibold col-span-1">${session.membre_nom_complet}</p><p class="text-slate-600 col-span-1">${entry ? entry.toLocaleTimeString('fr-FR') : 'N/A'}</p><p class="text-slate-600 col-span-1">${exit ? exit.toLocaleTimeString('fr-FR') : '-'}</p><p class="text-slate-600 col-span-1">${durationText}</p>`;
+                sessionDiv.onclick = () => showViewMemberModal(session.membre_id);
                 container.appendChild(sessionDiv);
             });
         }
@@ -825,6 +836,7 @@
         }
         
         async function handleLogout() {
+            await clearLiveStatus();
             if (isReadOnlyMode) {
                 isReadOnlyMode = false, currentUserId = null;
                 mainView.classList.add('hidden');
@@ -850,15 +862,18 @@
 
             try {
                 if (id) {
+                    // --- EDIT MEMBER LOGIC ---
                     if (await confirmWithPin()) {
                         await updateDoc(doc(db, "gyms", currentUserId, "members", id), memberData);
                         await showAlert('Membre mis à jour avec succès !', 'success');
                         memberModal.classList.add('hidden');
+                        return; // Explicit return
                     }
                 } else {
+                    // --- ADD NEW MEMBER LOGIC ---
                     const memberType = document.getElementById('member-type').value;
                     memberData.memberType = memberType;
-                    memberData.status = 'actif'; // Default status for new members
+                    memberData.status = 'actif'; // Default status
                     if (memberType === 'subscription') {
                         const duration = parseInt(document.getElementById('subscription-duration').value, 10);
                         if (isNaN(duration) || duration <= 0) throw new Error("Durée d'abonnement invalide.");
@@ -932,13 +947,21 @@
             if (await confirmWithPin() && await showConfirm('Êtes-vous sûr de vouloir supprimer ce membre et toutes ses données associées ? Cette action est irréversible.')) {
                 try {
                     const batch = writeBatch(db);
-                    ["payments", "sessions"].forEach(async colName => {
+                    
+                    // CORRECTED: Use for...of loop to correctly handle async operations inside the loop.
+                    // The previous forEach did not wait for the deletions to be added to the batch.
+                    for (const colName of ["payments", "sessions"]) {
                         const q = query(collection(db, "gyms", currentUserId, colName), where("membre_id", "==", id));
                         const snapshot = await getDocs(q);
                         snapshot.forEach(doc => batch.delete(doc.ref));
-                    });
+                    }
+
+                    // Delete the member document itself
                     batch.delete(doc(db, "gyms", currentUserId, "members", id));
+                    
+                    // Commit all deletions at once
                     await batch.commit();
+
                     await showAlert('Membre et données associées supprimés.', 'success');
                     viewMemberModal.classList.add('hidden');
                 } catch (error) {
@@ -1238,20 +1261,20 @@
             if(!isReadOnlyMode) {
                  let mainActionBtn = '';
                  if (member.status === 'suspendu') {
-                     mainActionBtn = `<button id="reactivate-btn" class="flex-1 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors">Réactiver</button>`;
+                      mainActionBtn = `<button id="reactivate-btn" class="flex-1 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors">Réactiver</button>`;
                  } else if (member.memberType === 'subscription') {
-                     mainActionBtn = `<button id="renew-btn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Renouveler</button>
+                      mainActionBtn = `<button id="renew-btn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Renouveler</button>
                                        <button id="suspend-btn" class="flex-1 bg-yellow-500 text-white font-bold py-3 rounded-lg hover:bg-yellow-600 transition-colors">Suspendre</button>`;
                  } else { // session type
-                     mainActionBtn = `<button id="deduct-btn" class="flex-1 bg-orange-500 text-white font-bold py-3 rounded-lg hover:bg-orange-600 transition-colors">Décompter 1 Séance</button>
+                      mainActionBtn = `<button id="deduct-btn" class="flex-1 bg-orange-500 text-white font-bold py-3 rounded-lg hover:bg-orange-600 transition-colors">Décompter 1 Séance</button>
                                        <button id="add-sessions-btn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Ajouter des Séances</button>`;
                  }
                 actionButtonsHtml = `<div class="flex gap-4 pt-4 border-t mt-4">${mainActionBtn}</div>
-                                       <div class="flex gap-4 pt-4 border-t mt-4">
-                                           <button id="show-card-btn" class="flex-1 bg-slate-600 text-white font-bold py-3 rounded-lg hover:bg-slate-700">Afficher Carte</button>
-                                           <button id="edit-btn" class="flex-1 bg-slate-200 font-bold py-3 rounded-lg hover:bg-slate-300">Modifier</button>
-                                           <button id="delete-btn" class="flex-1 bg-red-100 text-red-700 font-bold py-3 rounded-lg hover:bg-red-200">Supprimer</button>
-                                       </div>`;
+                                     <div class="flex gap-4 pt-4 border-t mt-4">
+                                         <button id="show-card-btn" class="flex-1 bg-slate-600 text-white font-bold py-3 rounded-lg hover:bg-slate-700">Afficher Carte</button>
+                                         <button id="edit-btn" class="flex-1 bg-slate-200 font-bold py-3 rounded-lg hover:bg-slate-300">Modifier</button>
+                                         <button id="delete-btn" class="flex-1 bg-red-100 text-red-700 font-bold py-3 rounded-lg hover:bg-red-200">Supprimer</button>
+                                     </div>`;
             }
 
             content.innerHTML = `
@@ -1369,7 +1392,7 @@
                 document.getElementById('app').classList.add('hidden');
                 kioskView.classList.remove('hidden');
                 html5QrCode = new Html5Qrcode("kiosk-reader");
-                const config = { fps: 5, qrbox: { width: 250, height: 250 } };
+                const config = { fps: 10, qrbox: { width: 300, height: 300 } };
                 html5QrCode.start({ facingMode: "user" }, config, onKioskScanSuccess)
                 .catch(err => {
                     console.log(`Unable to start kiosk scanning, error=${err}`);
@@ -1395,44 +1418,83 @@
             qrScannerModal.classList.add('hidden');
         }
 
-        function onKioskScanSuccess(decodedText) {
-            if(kioskScanCooldown) return;
-            kioskScanCooldown = true;
+        function setKioskReaderState(state = 'scanning') {
+            const borderEl = document.getElementById('kiosk-reader-border');
+            if (!borderEl) return;
+            
+            borderEl.classList.remove('border-slate-500', 'border-amber-400', 'border-green-400', 'border-red-400');
 
-            processScan(decodedText, kioskGymId, 'kiosk');
+            switch (state) {
+                case 'processing':
+                    borderEl.classList.add('border-amber-400');
+                    break;
+                case 'success':
+                case 'info': // Treat info (like checkout) as success visually
+                    borderEl.classList.add('border-green-400');
+                    break;
+                case 'error':
+                    borderEl.classList.add('border-red-400');
+                    break;
+                case 'scanning':
+                default:
+                    borderEl.classList.add('border-slate-500');
+                    break;
+            }
+        }
+        
+        async function onKioskScanSuccess(decodedText) {
+            if(kioskScanCooldown || !kioskGymId) {
+                if(!kioskGymId) console.error("Kiosk scan ignored: gymId is not set.");
+                return;
+            }
+            kioskScanCooldown = true;
+            setKioskReaderState('processing');
+
+            await processScan(decodedText, kioskGymId, 'kiosk');
 
             setTimeout(() => {
                 kioskScanCooldown = false;
+                setKioskReaderState('scanning');
             }, 3000); // 3-second cooldown
         }
         
         async function processScan(scannedId, gymId, source) {
-            let user, userType, name, resultMessage, resultType;
+            let user, userType, name, resultMessage, resultType, action;
             try {
-                // Try fetching as a member
                 const memberDoc = await getDoc(doc(db, "gyms", gymId, "members", scannedId));
                 if (memberDoc.exists()) {
                     user = { id: memberDoc.id, ...memberDoc.data() };
                     userType = 'member';
-                    name = `${user.firstname} ${user.lastname}`;
                 } else {
-                    // Try fetching as personnel
                     const personnelDoc = await getDoc(doc(db, "gyms", gymId, "personnel", scannedId));
                     if(personnelDoc.exists()){
                         user = { id: personnelDoc.id, ...personnelDoc.data() };
                         userType = 'personnel';
-                        name = `${user.firstname} ${user.lastname}`;
                     }
                 }
                 
                 if (user) {
+                    name = `${user.firstname} ${user.lastname}`;
                     const result = userType === 'member' ? await processMemberCheckin(user, gymId) : await processPersonnelCheckin(user, gymId);
-                    resultMessage = result.message;
+                    action = result.action; // Capture the action
+                    
+                    if (userType === 'member' && result.action === 'checkin') {
+                        const { status } = getMemberStatus(user);
+                        resultMessage = `Statut : ${status}`;
+                        if (user.memberType === 'subscription' && user.date_fin_abonnement) {
+                            const endDate = user.date_fin_abonnement.toDate().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                            resultMessage += `<br>Fin : ${endDate}`;
+                        }
+                    } else {
+                        resultMessage = result.message;
+                    }
                     resultType = result.type;
+
                 } else {
                     name = 'Inconnu';
                     resultMessage = "QR code non reconnu.";
                     resultType = "error";
+                    action = 'error';
                 }
 
             } catch (error) {
@@ -1440,19 +1502,26 @@
                 name = 'Erreur';
                 resultMessage = 'Erreur système lors du scan.';
                 resultType = 'error';
+                action = 'error';
             }
 
-            // Update live feed
-            await setDoc(doc(db, "gyms", gymId, "status", "latestScan"), { name, status: resultMessage, type: resultType, timestamp: serverTimestamp() });
-            
-            // Display result
-            if(source === 'kiosk') displayKioskMessage(name, resultMessage, resultType);
-            else if (source === 'modal') showAlert(resultMessage, resultType);
+            // --- MODIFIED LOGIC FOR DISPLAY ---
+            if (source === 'kiosk') {
+                setKioskReaderState(resultType);
+                displayKioskMessage(name, resultMessage, resultType);
+            } else if (source === 'modal') {
+                // For the manager, only show a pop-up if it's NOT a checkout.
+                // Checkout messages will appear in the top-right "live-scan-feed" panel.
+                if (action !== 'checkout') {
+                    showAlert(resultMessage, resultType);
+                }
+            }
+             await setDoc(doc(db, "gyms", gymId, "status", "latestScan"), { name, status: resultMessage, type: resultType, timestamp: serverTimestamp() });
         }
 
         async function processMemberCheckin(member, gymId) {
             if (member.status === 'suspendu') {
-                return { message: `Accès refusé. Statut : Suspendu.`, type: "error" };
+                return { message: `Accès refusé. Statut : Suspendu.`, type: "error", action: 'denied' };
             }
 
             const sessionsRef = collection(db, "gyms", gymId, "sessions");
@@ -1466,15 +1535,15 @@
                 const h = Math.floor(durationMs / 3600000);
                 const m = Math.floor((durationMs % 3600000) / 60000);
                 const durationText = h > 0 ? `${h}h ${m}min` : `${m}min`;
-                return { message: `Au revoir ! Durée: ${durationText}.`, type: "info" };
+                return { message: `Au revoir ! Durée: ${durationText}.`, type: "info", action: 'checkout' };
             } else {
                 const status = getMemberStatus(member);
                 if (status.key === 'expired') {
-                    return { message: `Accès refusé. Statut : ${status.status}.`, type: "error" };
+                    return { message: `Accès refusé. Statut : ${status.status}.`, type: "error", action: 'denied' };
                 }
                 if (member.memberType === 'session') await updateDoc(doc(db, "gyms", gymId, "members", member.id), { seances_restantes: (member.seances_restantes || 0) - 1 });
                 await addDoc(sessionsRef, { membre_id: member.id, membre_nom_complet: `${member.firstname} ${member.lastname}`, entryTime: serverTimestamp(), exitTime: null });
-                return { message: `Bienvenue ! Statut: ${status.status}`, type: "success" };
+                return { message: 'Check-in successful', type: "success", action: 'checkin' };
             }
         }
         
@@ -1490,10 +1559,10 @@
                 const h = Math.floor(durationMs / 3600000);
                 const m = Math.floor((durationMs % 3600000) / 60000);
                 const durationText = h > 0 ? `${h}h ${m}min` : `${m}min`;
-                return { message: `Départ enregistré. Temps: ${durationText}.`, type: "info" };
+                return { message: `Départ enregistré. Temps: ${durationText}.`, type: "info", action: 'checkout' };
             } else {
                 await addDoc(sessionsRef, { personnel_id: staff.id, personnel_nom_complet: `${staff.firstname} ${staff.lastname}`, entryTime: serverTimestamp(), exitTime: null });
-                return { message: 'Arrivée enregistrée.', type: "success" };
+                return { message: 'Arrivée enregistrée.', type: "success", action: 'checkin' };
             }
         }
         
@@ -1503,15 +1572,15 @@
             const msgEl = msgContainer.children[1];
             
             nameEl.textContent = name;
-            msgEl.textContent = message;
+            msgEl.innerHTML = message; // Use innerHTML to render line breaks
 
-            if(type === 'success') msgContainer.className = 'mt-8 text-center text-green-400 h-24';
-            else if(type === 'error') msgContainer.className = 'mt-8 text-center text-red-400 h-24';
-            else msgContainer.className = 'mt-8 text-center text-blue-400 h-24';
+            if(type === 'success') nameEl.className = 'text-3xl font-bold text-green-400';
+            else if(type === 'error') nameEl.className = 'text-3xl font-bold text-red-400';
+            else nameEl.className = 'text-3xl font-bold text-blue-400';
 
             setTimeout(() => {
                 nameEl.textContent = '';
-                msgEl.textContent = '';
+                msgEl.innerHTML = '';
             }, 3000);
         }
 
@@ -1553,11 +1622,22 @@
                 stopKioskMode();
             }
         }
+        
+        async function clearLiveStatus() {
+            const userId = currentUserId || kioskGymId;
+            if (userId) {
+                try {
+                    await deleteDoc(doc(db, "gyms", userId, "status", "latestScan"));
+                } catch (e) {
+                    console.log("No live status to clear or already cleared.");
+                }
+            }
+        }
 
         function showMemberCard(member) {
             const cardTitle = `Carte de Membre`;
             const cardSubtitle = `Membre #${member.id.substring(0, 6)}`;
-            generateCard(member.id, `${member.firstname} ${member.lastname}`, cardTitle, cardSubtitle);
+            generateCard(member.id, `${member.firstname} ${member.lastname}`, cardTitle, cardSubtitle, member.photoUrl);
         }
 
         function showPersonnelCard(personnelId) {
@@ -1565,23 +1645,37 @@
             if (!staff) return;
             const cardTitle = `Badge Personnel`;
             const cardSubtitle = `${staff.role || 'Employé'}`;
-            generateCard(staff.id, `${staff.firstname} ${staff.lastname}`, cardTitle, cardSubtitle);
+            generateCard(staff.id, `${staff.firstname} ${staff.lastname}`, cardTitle, cardSubtitle, null);
         }
 
-        function generateCard(id, name, title, subtitle) {
+        function generateCard(id, name, title, subtitle, photoUrl) {
             const displayArea = document.getElementById('card-display-area');
             const gymName = document.getElementById('app-title-main').textContent;
-            displayArea.innerHTML = `<div id="card-to-process" class="bg-white p-4 text-center"><div class="flex items-center justify-center mb-4"><i class="ph-bold ph-barbell text-3xl text-black"></i><h2 class="text-xl font-bold ml-2">${gymName}</h2></div><p class="font-semibold text-gray-500">${title}</p><h3 class="text-2xl font-bold">${name}</h3><p class="text-gray-600 mb-4">${subtitle}</p><canvas id="qr-canvas"></canvas></div>`;
+            const photoHTML = `<img src="${photoUrl || 'https://placehold.co/100x100/e2e8f0/475569?text=Photo'}" crossorigin="anonymous" class="w-24 h-24 rounded-full object-cover mx-auto mb-4 border-4 border-white shadow-md" alt="Photo" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/475569?text=Photo';">`;
+            
+            displayArea.innerHTML = `<div id="card-to-process" class="bg-white p-4 text-center">
+                <div class="flex items-center justify-center mb-2">
+                    <i class="ph-bold ph-barbell text-3xl text-black"></i>
+                    <h2 class="text-xl font-bold ml-2">${gymName}</h2>
+                </div>
+                ${photoHTML}
+                <p class="font-semibold text-gray-500">${title}</p>
+                <h3 class="text-2xl font-bold">${name}</h3>
+                <p class="text-gray-600 mb-4">${subtitle}</p>
+                <canvas id="qr-canvas"></canvas>
+            </div>`;
             
             QRCode.toCanvas(document.getElementById('qr-canvas'), id, { width: 200 }, (error) => {
                 if (error) return console.error(error);
                 cardModal.classList.remove('hidden');
-                document.getElementById('download-card-btn').onclick = () => html2canvas(document.getElementById('card-to-process')).then(canvas => {
-                    const link = document.createElement('a');
-                    link.download = `carte_${name.replace(/\s+/g, '_')}.png`;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                });
+                document.getElementById('download-card-btn').onclick = () => {
+                    html2canvas(document.getElementById('card-to-process'), { useCORS: true }).then(canvas => {
+                        const link = document.createElement('a');
+                        link.download = `carte_${name.replace(/\s+/g, '_')}.png`;
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    });
+                };
                 document.getElementById('print-card-btn-action').onclick = () => {
                     document.body.classList.add('printing');
                     window.print();
@@ -1655,7 +1749,7 @@
                 const isRevenue = item.type === 'revenue';
                 const div = document.createElement('div');
                 div.className = 'flex justify-between items-center p-2 rounded-md hover:bg-slate-100';
-                div.innerHTML = `<div><p class="font-semibold">${item.desc}</p><p class="text-sm text-slate-500">${item.date?.toLocaleDateString('fr-FR')}</p></div><p class="font-bold mr-4 ${isRevenue ? 'text-green-600' : 'text-red-600'}">${isRevenue ? '+' : '-'} ${formatter.format(item.amount)}</p><button class="delete-transaction-btn text-slate-400 hover:text-red-600 p-1" data-id="${item.id}" data-type="${item.type}"><i class="ph-bold ph-trash text-lg"></i></button>`;
+                div.innerHTML = `<div><p class="font-semibold">${item.desc}</p><p class="text-sm text-slate-500">${item.date?.toLocaleDateString('fr-FR')}</p></div><div class="flex items-center"><p class="font-bold mr-4 ${isRevenue ? 'text-green-600' : 'text-red-600'}">${isRevenue ? '+' : '-'} ${formatter.format(item.amount)}</p><button class="delete-transaction-btn text-slate-400 hover:text-red-600 p-1" data-id="${item.id}" data-type="${item.type}"><i class="ph-bold ph-trash text-lg"></i></button></div>`;
                 container.appendChild(div);
             });
         }
