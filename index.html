@@ -281,7 +281,10 @@
             <form id="personnel-form" class="space-y-4">
                 <input type="hidden" id="personnel-id">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="text" id="personnel-firstname" placeholder="Prénom" class="w-full p-2 border rounded-md" required><input type="text" id="personnel-lastname" placeholder="Nom" class="w-full p-2 border rounded-md" required><input type="tel" id="personnel-phone" placeholder="Contact" class="w-full p-2 border rounded-md" required><input type="text" id="personnel-address" placeholder="Lieu de résidence" class="w-full p-2 border rounded-md"><input type="text" id="personnel-role" placeholder="Rôle / Activité (ex: Coach)" class="w-full p-2 border rounded-md"><input type="text" id="personnel-id-card" placeholder="N° pièce d'identité" class="w-full p-2 border rounded-md">
+                    <input type="text" id="personnel-firstname" placeholder="Prénom" class="w-full p-2 border rounded-md" required><input type="text" id="personnel-lastname" placeholder="Nom" class="w-full p-2 border rounded-md" required>
+                    <input type="tel" id="personnel-phone" placeholder="Contact" class="w-full p-2 border rounded-md" required><input type="text" id="personnel-address" placeholder="Lieu de résidence" class="w-full p-2 border rounded-md">
+                    <div class="md:col-span-2"><input type="url" id="personnel-photo" placeholder="URL de la photo (optionnel)" class="w-full p-2 border rounded-md"></div>
+                    <input type="text" id="personnel-role" placeholder="Rôle / Activité (ex: Coach)" class="w-full p-2 border rounded-md"><input type="text" id="personnel-id-card" placeholder="N° pièce d'identité" class="w-full p-2 border rounded-md">
                     <div><label for="personnel-hire-date" class="text-sm font-medium">Date d'embauche</label><input type="date" id="personnel-hire-date" class="w-full p-2 border rounded-md" required></div>
                     <input type="text" id="personnel-contract-type" placeholder="Type de contrat (CDI, CDD...)" class="w-full p-2 border rounded-md"><input type="number" id="personnel-salary" placeholder="Salaire (FCFA)" class="w-full p-2 border rounded-md" min="0">
                     <div id="personnel-status-container" class="hidden md:col-span-2"><label for="personnel-status" class="text-sm font-medium">Statut</label><select id="personnel-status" class="w-full p-2 border rounded-md"><option value="Actif">Actif</option><option value="Contrat terminé">Contrat terminé</option></select></div>
@@ -511,6 +514,7 @@
                     mainView.classList.remove('hidden');
                     listenToData();
                     updateUIAccess();
+                    cleanupOldSessions();
                     switchView('members'); 
                 } else if (!isReadOnlyMode) {
                     currentUserId = null;
@@ -912,6 +916,7 @@
                 firstname: document.getElementById('personnel-firstname').value.trim(),
                 lastname: document.getElementById('personnel-lastname').value.trim(),
                 phone: document.getElementById('personnel-phone').value.trim(),
+                photoUrl: document.getElementById('personnel-photo').value.trim(),
                 role: document.getElementById('personnel-role').value.trim(),
                 address: document.getElementById('personnel-address').value.trim(),
                 idCard: document.getElementById('personnel-id-card').value.trim(),
@@ -948,18 +953,14 @@
                 try {
                     const batch = writeBatch(db);
                     
-                    // CORRECTED: Use for...of loop to correctly handle async operations inside the loop.
-                    // The previous forEach did not wait for the deletions to be added to the batch.
                     for (const colName of ["payments", "sessions"]) {
                         const q = query(collection(db, "gyms", currentUserId, colName), where("membre_id", "==", id));
                         const snapshot = await getDocs(q);
                         snapshot.forEach(doc => batch.delete(doc.ref));
                     }
 
-                    // Delete the member document itself
                     batch.delete(doc(db, "gyms", currentUserId, "members", id));
                     
-                    // Commit all deletions at once
                     await batch.commit();
 
                     await showAlert('Membre et données associées supprimés.', 'success');
@@ -1222,6 +1223,7 @@
             document.getElementById('personnel-firstname').value = staff.firstname || '';
             document.getElementById('personnel-lastname').value = staff.lastname || '';
             document.getElementById('personnel-phone').value = staff.phone || '';
+            document.getElementById('personnel-photo').value = staff.photoUrl || '';
             document.getElementById('personnel-address').value = staff.address || '';
             document.getElementById('personnel-role').value = staff.role || '';
             document.getElementById('personnel-id-card').value = staff.idCard || '';
@@ -1633,6 +1635,44 @@
                 }
             }
         }
+        
+        async function cleanupOldSessions() {
+            if (!currentUserId || isReadOnlyMode) return;
+            console.log("Checking for stale sessions...");
+
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+            const sessionsRef = collection(db, "gyms", currentUserId, "sessions");
+            const q = query(sessionsRef, where("exitTime", "==", null));
+            
+            try {
+                const querySnapshot = await getDocs(q);
+                const batch = writeBatch(db);
+                let sessionsCleaned = 0;
+
+                querySnapshot.forEach(docSnap => {
+                    const session = docSnap.data();
+                    const entryTime = session.entryTime?.toDate();
+
+                    if (entryTime && entryTime < startOfToday) {
+                        const endOfDayEntry = new Date(entryTime);
+                        endOfDayEntry.setHours(23, 59, 59, 999);
+                        batch.update(docSnap.ref, { exitTime: endOfDayEntry });
+                        sessionsCleaned++;
+                    }
+                });
+
+                if (sessionsCleaned > 0) {
+                    await batch.commit();
+                    console.log(`${sessionsCleaned} stale session(s) have been automatically closed.`);
+                } else {
+                    console.log("No stale sessions found.");
+                }
+            } catch (error) {
+                console.error("Error cleaning up old sessions:", error);
+            }
+        }
 
         function showMemberCard(member) {
             const cardTitle = `Carte de Membre`;
@@ -1645,7 +1685,7 @@
             if (!staff) return;
             const cardTitle = `Badge Personnel`;
             const cardSubtitle = `${staff.role || 'Employé'}`;
-            generateCard(staff.id, `${staff.firstname} ${staff.lastname}`, cardTitle, cardSubtitle, null);
+            generateCard(staff.id, `${staff.firstname} ${staff.lastname}`, cardTitle, cardSubtitle, staff.photoUrl);
         }
 
         function generateCard(id, name, title, subtitle, photoUrl) {
