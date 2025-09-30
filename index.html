@@ -72,36 +72,55 @@
                 <div id="consultation-login-form" class="hidden">
                      <h2 class="text-xl font-semibold text-center text-slate-600 mb-6">Accès Propriétaire</h2>
                      <div class="space-y-4">
-                        <input type="text" id="gym-id-input" placeholder="Identifiant de la salle" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <input type="password" id="consultation-pin-input" placeholder="Code PIN" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500" inputmode="numeric" maxlength="4">
-                        <button id="consultation-login-button" class="w-full bg-slate-700 text-white font-bold py-3 rounded-lg hover:bg-slate-800 transition-colors duration-300 flex justify-center items-center">
-                            <span class="btn-text">Accéder</span>
-                            <i class="ph-bold ph-circle-notch spinner text-2xl hidden"></i>
-                        </button>
-                        <p id="consultation-login-error" class="text-red-500 text-sm text-center"></p>
-                    </div>
+                         <input type="text" id="gym-id-input" placeholder="Identifiant de la salle" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                         <input type="password" id="consultation-pin-input" placeholder="Code PIN" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500" inputmode="numeric" maxlength="4">
+                         <button id="consultation-login-button" class="w-full bg-slate-700 text-white font-bold py-3 rounded-lg hover:bg-slate-800 transition-colors duration-300 flex justify-center items-center">
+                             <span class="btn-text">Accéder</span>
+                             <i class="ph-bold ph-circle-notch spinner text-2xl hidden"></i>
+                         </button>
+                         <p id="consultation-login-error" class="text-red-500 text-sm text-center"></p>
+                     </div>
                 </div>
             </div>
         </div>
+        
+        <!-- NOUVEAU: Vue Kiosque (pour la tablette à l'entrée) -->
+        <div id="kiosk-view" class="hidden">
+            <div class="flex flex-col items-center justify-center h-screen bg-slate-900 text-white p-4 text-center">
+                <div class="flex items-center mb-4">
+                    <i class="ph-bold ph-barbell text-5xl text-blue-400"></i>
+                    <h1 class="text-4xl font-bold ml-3">FIT TRACK</h1>
+                </div>
+                <p class="text-xl text-slate-300 mb-8">Veuillez scanner votre QR code pour entrer.</p>
+                
+                <div id="kiosk-qr-reader" class="w-full max-w-sm md:max-w-md bg-slate-800 rounded-lg overflow-hidden shadow-2xl"></div>
 
+                <!-- Zone pour afficher le résultat du scan -->
+                <div id="kiosk-result" class="mt-8 text-2xl font-bold h-24"></div>
+
+                <!-- Éléments cachés pour la capture photo -->
+                <video id="selfie-video" playsinline class="hidden"></video>
+                <canvas id="selfie-canvas" class="hidden"></canvas>
+            </div>
+        </div>
 
         <!-- Vue principale de l'application (cachée par défaut) -->
         <div id="main-view" class="hidden">
             <!-- Header -->
             <header class="flex justify-between items-center mb-6">
                  <div class="flex items-center">
-                    <i class="ph-bold ph-barbell text-4xl text-blue-600"></i>
-                    <h1 class="text-2xl md:text-3xl font-bold ml-3">FIT TRACK</h1>
-                </div>
+                     <i class="ph-bold ph-barbell text-4xl text-blue-600"></i>
+                     <h1 class="text-2xl md:text-3xl font-bold ml-3">FIT TRACK</h1>
+                 </div>
                  <div class="text-right">
-                    <div id="gym-id-display" class="hidden text-xs bg-slate-200 text-slate-600 px-2 py-1 rounded-md inline-block mb-1">
-                        ID de la salle : <span id="gym-id-text" class="font-semibold"></span>
-                    </div>
-                    <p id="user-email" class="text-sm text-slate-500"></p>
-                    <button id="logout-button" class="text-sm font-semibold text-red-600 hover:underline">
-                        Déconnexion
-                    </button>
-                </div>
+                     <div id="gym-id-display" class="hidden text-xs bg-slate-200 text-slate-600 px-2 py-1 rounded-md inline-block mb-1">
+                         ID de la salle : <span id="gym-id-text" class="font-semibold"></span>
+                     </div>
+                     <p id="user-email" class="text-sm text-slate-500"></p>
+                     <button id="logout-button" class="text-sm font-semibold text-red-600 hover:underline">
+                         Déconnexion
+                     </button>
+                 </div>
             </header>
 
             <!-- Navigation -->
@@ -189,9 +208,9 @@
                     <div id="member-list-container" class="space-y-3"></div>
                      <p id="no-members-message" class="text-center text-slate-500 py-10 hidden">Aucun membre trouvé.</p>
                      <div id="loader" class="text-center text-slate-500 py-10">
-                        <i class="ph-bold ph-circle-notch text-4xl animate-spin text-blue-500"></i>
-                        <p>Chargement des données...</p>
-                    </div>
+                         <i class="ph-bold ph-circle-notch text-4xl animate-spin text-blue-500"></i>
+                         <p>Chargement des données...</p>
+                     </div>
                 </div>
             </div>
 
@@ -199,8 +218,8 @@
             <div id="finance-section" class="hidden">
                 <div class="flex justify-end mb-4">
                      <button id="add-charge-button" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center">
-                        <i class="ph-bold ph-plus mr-2"></i> Ajouter une Charge
-                    </button>
+                         <i class="ph-bold ph-plus mr-2"></i> Ajouter une Charge
+                     </button>
                 </div>
                 <div class="bg-white p-4 rounded-xl shadow mb-6">
                     <h3 class="font-bold text-lg mb-4">Télécharger un Rapport</h3>
@@ -275,6 +294,10 @@
                 </div>
             </div>
 
+            <!-- NOUVEAU: Toast de Notification pour le Gérant -->
+            <div id="scan-notification-toast" class="hidden fixed bottom-5 right-5 bg-white p-4 rounded-lg shadow-xl z-[100] border-l-4 w-full max-w-sm transition-transform duration-500 translate-x-[120%]">
+                <!-- Le contenu sera injecté par JavaScript -->
+            </div>
         </div>
     </div>
 
@@ -301,8 +324,8 @@
                 <div id="new-member-fields">
                     <h3 class="font-semibold border-b pb-2 pt-4">Type d'Adhésion</h3>
                     <div id="member-type-container" class="flex bg-slate-200 p-1 rounded-lg">
-                         <button type="button" id="type-subscription" class="member-type-btn flex-1 p-2 rounded-md font-semibold bg-white text-blue-600 shadow">Abonnement</button>
-                         <button type="button" id="type-session" class="member-type-btn flex-1 p-2 rounded-md font-semibold text-slate-600">Carnet de Séances</button>
+                          <button type="button" id="type-subscription" class="member-type-btn flex-1 p-2 rounded-md font-semibold bg-white text-blue-600 shadow">Abonnement</button>
+                          <button type="button" id="type-session" class="member-type-btn flex-1 p-2 rounded-md font-semibold text-slate-600">Carnet de Séances</button>
                     </div>
                     <input type="hidden" id="member-type" value="subscription">
                     <div id="subscription-fields">
@@ -360,9 +383,9 @@
                     <div id="personnel-status-container" class="hidden md:col-span-2">
                         <label for="personnel-status" class="text-sm font-medium">Statut</label>
                          <select id="personnel-status" class="w-full p-2 border rounded-md">
-                            <option value="Actif">Actif</option>
-                            <option value="Contrat terminé">Contrat terminé</option>
-                        </select>
+                             <option value="Actif">Actif</option>
+                             <option value="Contrat terminé">Contrat terminé</option>
+                         </select>
                     </div>
                 </div>
                 <div class="flex gap-4 pt-4 border-t">
@@ -514,6 +537,7 @@
         let dangerZoneClickCount = 0;
         let lastClickTimestamp = 0;
         let unsubscribeMembers = () => {}, unsubscribePayments = () => {}, unsubscribeCharges = () => {}, unsubscribeSessions = () => {}, unsubscribePersonnel = () => {}, unsubscribePersonnelSessions = () => {};
+        let unsubscribeScanNotifications = () => {}; // NOUVEAU
 
         // --- FULL SCRIPT LOGIC ---
 
@@ -544,10 +568,10 @@
             document.getElementById('pin-cancel').addEventListener('click', () => { pinModal.classList.add('hidden'); if (pinResolve) pinResolve(false); });
             document.getElementById('pin-confirm').addEventListener('click', () => {
                  if(document.getElementById('pin-input').value === SUPERVISOR_PIN) {
-                    pinModal.classList.add('hidden');
-                    if (pinResolve) pinResolve(true);
+                     pinModal.classList.add('hidden');
+                     if (pinResolve) pinResolve(true);
                  } else {
-                    document.getElementById('pin-error').textContent = "Code incorrect.";
+                     document.getElementById('pin-error').textContent = "Code incorrect.";
                  }
             });
             document.getElementById('alert-ok').addEventListener('click', () => { if (alertResolve) alertResolve(); });
@@ -609,14 +633,29 @@
             document.getElementById('close-personnel-sessions-bottom-btn').addEventListener('click', () => personnelSessionsModal.classList.add('hidden'));
         }
 
+        // NOUVEAU: Logique de démarrage modifiée pour gérer le mode kiosque
         function startApp() {
             try {
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
-                setupEventListeners();
-                setupAuthObserver();
-                document.getElementById('session-date-filter').valueAsDate = new Date();
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                const mode = urlParams.get('mode');
+                const gymId = urlParams.get('gymId');
+
+                if (mode === 'kiosk' && gymId) {
+                    // Démarrage en mode Kiosque (pas de login requis)
+                    currentUserId = gymId;
+                    document.getElementById('app').classList.add('hidden'); // Cacher le conteneur principal
+                    document.getElementById('kiosk-view').classList.remove('hidden');
+                    startKioskScanner(gymId);
+                } else {
+                    // Démarrage normal avec authentification
+                    setupEventListeners();
+                    setupAuthObserver();
+                    document.getElementById('session-date-filter').valueAsDate = new Date();
+                }
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
                 document.body.innerHTML = `<div class="p-8 bg-red-100 text-red-800 rounded-lg m-4"><strong>Erreur de Configuration Firebase.</strong><br>Veuillez vérifier votre objet de configuration Firebase.</div>`;
@@ -653,6 +692,7 @@
             listenToSessions();
             listenToPersonnel();
             listenToPersonnelSessions();
+            listenToScanNotifications(); // NOUVEAU
         }
 
         function unsubscribeData() {
@@ -662,6 +702,7 @@
             unsubscribeSessions();
             unsubscribePersonnel();
             unsubscribePersonnelSessions();
+            unsubscribeScanNotifications(); // NOUVEAU
         }
 
         function listenToPersonnel() {
@@ -783,7 +824,7 @@
                          <div>
                              <p class="font-semibold text-slate-500">Contrat</p>
                              <p class="text-slate-700">${p.contractType || 'N/A'}</p>
-                        </div>
+                         </div>
                         <div>
                             <p class="font-semibold text-slate-500">Salaire</p>
                              <p class="text-slate-700">${p.salary ? formatter.format(p.salary) : 'N/A'}</p>
@@ -837,14 +878,14 @@
         function getMemberStatus(member) {
              if (member.status === 'suspendu') return { key: 'expired', status: 'Suspendu', color: 'border-slate-400', text: 'text-slate-600' };
              if (member.memberType === 'subscription') {
-                if (!member.date_fin_abonnement) return { key: 'expired', status: 'Incomplet', color: 'border-slate-400', text: 'text-slate-600' };
-                const endDate = member.date_fin_abonnement.toDate();
-                const now = new Date();
-                now.setHours(0,0,0,0);
-                const diffDays = Math.ceil((endDate - now) / (1000 * 3600 * 24));
-                if (diffDays < 0) return { key: 'expired', status: 'Expiré', color: 'border-red-500', text: 'text-red-600' };
-                if (diffDays <= 7) return { key: 'expiring', status: 'Expire Bientôt', color: 'border-orange-400', text: 'text-orange-500' };
-                return { key: 'active', status: 'Actif', color: 'border-green-500', text: 'text-green-600' };
+                 if (!member.date_fin_abonnement) return { key: 'expired', status: 'Incomplet', color: 'border-slate-400', text: 'text-slate-600' };
+                 const endDate = member.date_fin_abonnement.toDate();
+                 const now = new Date();
+                 now.setHours(0,0,0,0);
+                 const diffDays = Math.ceil((endDate - now) / (1000 * 3600 * 24));
+                 if (diffDays < 0) return { key: 'expired', status: 'Expiré', color: 'border-red-500', text: 'text-red-600' };
+                 if (diffDays <= 7) return { key: 'expiring', status: 'Expire Bientôt', color: 'border-orange-400', text: 'text-orange-500' };
+                 return { key: 'active', status: 'Actif', color: 'border-green-500', text: 'text-green-600' };
             } else if (member.memberType === 'session') {
                 const remaining = member.seances_restantes || 0;
                 if (remaining <= 0) return { key: 'expired', status: '0 Séance', color: 'border-red-500', text: 'text-red-600' };
@@ -1057,13 +1098,13 @@
              const staff = allPersonnel.find(p => p.id === id);
              if (!staff) return;
              if (await confirmWithPin() && await showConfirm(`Êtes-vous sûr de vouloir mettre fin au contrat de ${staff.firstname} ${staff.lastname} ?`)) {
-                try {
-                    await updateDoc(doc(db, "gyms", currentUserId, "personnel", id), { status: 'Contrat terminé' });
-                    await showAlert('Le statut du contrat a été mis à jour.', 'success');
-                } catch (error) {
-                    console.error("Error ending contract:", error);
-                    await showAlert('Erreur lors de la mise à jour du statut.', 'error');
-                }
+                 try {
+                     await updateDoc(doc(db, "gyms", currentUserId, "personnel", id), { status: 'Contrat terminé' });
+                     await showAlert('Le statut du contrat a été mis à jour.', 'success');
+                 } catch (error) {
+                     console.error("Error ending contract:", error);
+                     await showAlert('Erreur lors de la mise à jour du statut.', 'error');
+                 }
              }
         }
         
@@ -1091,22 +1132,22 @@
 
         async function reactivateSubscription(id, member) {
              if (await confirmWithPin() && await showConfirm('Voulez-vous réactiver cet abonnement ?')) {
-                const remainingDays = member.remainingDaysOnSuspend || 0;
-                const newEndDate = new Date();
-                newEndDate.setDate(newEndDate.getDate() + remainingDays);
-                
-                try {
-                    await updateDoc(doc(db, "gyms", currentUserId, "members", id), {
-                        status: 'actif',
-                        date_fin_abonnement: newEndDate,
-                        remainingDaysOnSuspend: 0
-                    });
-                    await showAlert('Abonnement réactivé.\nNouvelle date de fin : ' + newEndDate.toLocaleDateString('fr-FR'), 'success');
-                    showViewMemberModal(id);
-                } catch (error) {
-                    console.error("Error reactivating subscription:", error);
-                    await showAlert('Erreur lors de la réactivation.', 'error');
-                }
+                 const remainingDays = member.remainingDaysOnSuspend || 0;
+                 const newEndDate = new Date();
+                 newEndDate.setDate(newEndDate.getDate() + remainingDays);
+                 
+                 try {
+                     await updateDoc(doc(db, "gyms", currentUserId, "members", id), {
+                         status: 'actif',
+                         date_fin_abonnement: newEndDate,
+                         remainingDaysOnSuspend: 0
+                     });
+                     await showAlert('Abonnement réactivé.\nNouvelle date de fin : ' + newEndDate.toLocaleDateString('fr-FR'), 'success');
+                     showViewMemberModal(id);
+                 } catch (error) {
+                     console.error("Error reactivating subscription:", error);
+                     await showAlert('Erreur lors de la réactivation.', 'error');
+                 }
              }
         }
 
@@ -1205,8 +1246,8 @@
                     await batch.commit();
                     await showAlert("L'application a été réinitialisée.", "success");
                 } catch (error) {
-                      console.error("Error resetting application: ", error);
-                      await showAlert('Erreur lors de la réinitialisation.', 'error');
+                     console.error("Error resetting application: ", error);
+                     await showAlert('Erreur lors de la réinitialisation.', 'error');
                 }
             }
         }
@@ -1331,20 +1372,20 @@
             if(!isReadOnlyMode) {
                  let mainActionBtn = '';
                  if (member.status === 'suspendu') {
-                    mainActionBtn = `<button id="reactivate-btn" class="flex-1 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors">Réactiver</button>`;
+                     mainActionBtn = `<button id="reactivate-btn" class="flex-1 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors">Réactiver</button>`;
                  } else if (member.memberType === 'subscription') {
-                    mainActionBtn = `<button id="renew-btn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Renouveler</button>
-                                     <button id="suspend-btn" class="flex-1 bg-yellow-500 text-white font-bold py-3 rounded-lg hover:bg-yellow-600 transition-colors">Suspendre</button>`;
+                     mainActionBtn = `<button id="renew-btn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Renouveler</button>
+                                       <button id="suspend-btn" class="flex-1 bg-yellow-500 text-white font-bold py-3 rounded-lg hover:bg-yellow-600 transition-colors">Suspendre</button>`;
                  } else { // session type
-                    mainActionBtn = `<button id="deduct-btn" class="flex-1 bg-orange-500 text-white font-bold py-3 rounded-lg hover:bg-orange-600 transition-colors">Décompter 1 Séance</button>
-                                     <button id="add-sessions-btn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Ajouter des Séances</button>`;
+                     mainActionBtn = `<button id="deduct-btn" class="flex-1 bg-orange-500 text-white font-bold py-3 rounded-lg hover:bg-orange-600 transition-colors">Décompter 1 Séance</button>
+                                      <button id="add-sessions-btn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Ajouter des Séances</button>`;
                  }
                 actionButtonsHtml = `<div class="flex gap-4 pt-4 border-t mt-4">${mainActionBtn}</div>
-                                     <div class="flex gap-4 pt-4 border-t mt-4">
-                                        <button id="show-card-btn" class="flex-1 bg-slate-600 text-white font-bold py-3 rounded-lg hover:bg-slate-700">Afficher Carte</button>
-                                        <button id="edit-btn" class="flex-1 bg-slate-200 font-bold py-3 rounded-lg hover:bg-slate-300">Modifier</button>
-                                        <button id="delete-btn" class="flex-1 bg-red-100 text-red-700 font-bold py-3 rounded-lg hover:bg-red-200">Supprimer</button>
-                                     </div>`;
+                                       <div class="flex gap-4 pt-4 border-t mt-4">
+                                           <button id="show-card-btn" class="flex-1 bg-slate-600 text-white font-bold py-3 rounded-lg hover:bg-slate-700">Afficher Carte</button>
+                                           <button id="edit-btn" class="flex-1 bg-slate-200 font-bold py-3 rounded-lg hover:bg-slate-300">Modifier</button>
+                                           <button id="delete-btn" class="flex-1 bg-red-100 text-red-700 font-bold py-3 rounded-lg hover:bg-red-200">Supprimer</button>
+                                       </div>`;
             }
 
             content.innerHTML = `
@@ -1353,10 +1394,10 @@
                     <div class="flex-1">
                         <div class="flex items-start justify-between">
                              <div>
-                                <h3 class="text-3xl font-bold">${member.firstname} ${member.lastname}</h3>
-                                <p class="text-slate-600">${member.phone}</p>
-                            </div>
-                            <div class="p-2 rounded-lg text-center ${color}">
+                                 <h3 class="text-3xl font-bold">${member.firstname} ${member.lastname}</h3>
+                                 <p class="text-slate-600">${member.phone}</p>
+                             </div>
+                            <div class="p-2 rounded-lg text-center ${color.replace('border-', 'bg-').replace('-500', '-100')}">
                                 <span class="font-bold text-lg ${text}">${status}</span>
                             </div>
                         </div>
@@ -1452,7 +1493,7 @@
                     await showAlert("QR code non reconnu.", "error");
                 }
             };
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, qrCodeSuccessCallback).catch(err => console.log(`Unable to start scanning, error=${err}`));
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, qrCodeSuccessCallback).catch(err => console.log(`Unable to start scanning, error=${err}`));
         }
         
         async function handleMemberScan(memberId) {
@@ -1483,18 +1524,18 @@
              } else {
                  const status = getMemberStatus(member);
                  if (status.key === 'expired') {
-                     await showAlert(`Accès refusé pour ${member.firstname}.\nStatut : ${status.status}.`, "error");
-                     return showViewMemberModal(member.id);
+                      await showAlert(`Accès refusé pour ${member.firstname}.\nStatut : ${status.status}.`, "error");
+                      return showViewMemberModal(member.id);
                  }
                  try {
-                     if (member.memberType === 'session') await updateDoc(doc(db, "gyms", currentUserId, "members", member.id), { seances_restantes: (member.seances_restantes || 0) - 1 });
-                     await addDoc(sessionsRef, { membre_id: member.id, membre_nom_complet: `${member.firstname} ${member.lastname}`, entryTime: serverTimestamp(), exitTime: null });
-                     let welcomeMessage = `Bienvenue ${member.firstname} !\nStatut: ${status.status}`;
-                     if (member.memberType === 'subscription') welcomeMessage += `\nFin: ${member.date_fin_abonnement.toDate().toLocaleDateString('fr-FR')}`;
-                     await showAlert(welcomeMessage, 'success');
+                      if (member.memberType === 'session') await updateDoc(doc(db, "gyms", currentUserId, "members", member.id), { seances_restantes: (member.seances_restantes || 0) - 1 });
+                      await addDoc(sessionsRef, { membre_id: member.id, membre_nom_complet: `${member.firstname} ${member.lastname}`, entryTime: serverTimestamp(), exitTime: null });
+                      let welcomeMessage = `Bienvenue ${member.firstname} !\nStatut: ${status.status}`;
+                      if (member.memberType === 'subscription') welcomeMessage += `\nFin: ${member.date_fin_abonnement.toDate().toLocaleDateString('fr-FR')}`;
+                      await showAlert(welcomeMessage, 'success');
                  } catch (error) {
-                     console.error("Erreur d'enregistrement d'entrée:", error);
-                     await showAlert("Erreur lors de l'enregistrement de l'entrée.", "error");
+                      console.error("Erreur d'enregistrement d'entrée:", error);
+                      await showAlert("Erreur lors de l'enregistrement de l'entrée.", "error");
                  }
              }
         }
@@ -1534,6 +1575,153 @@
         function stopQrScanner() {
             if(html5QrCode?.isScanning) html5QrCode.stop().catch(err => console.log("QR scanner stop failed", err));
             qrScannerModal.classList.add('hidden');
+        }
+
+        // --- NOUVEAU: Fonctions pour le mode Kiosque et les notifications ---
+
+        let kioskHtml5QrCode = null;
+
+        function startKioskScanner(gymId) {
+            document.getElementById('kiosk-result').innerHTML = '';
+            kioskHtml5QrCode = new Html5Qrcode("kiosk-qr-reader");
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            
+            const qrCodeSuccessCallback = async (decodedText) => {
+                if (kioskHtml5QrCode?.isScanning) {
+                    try { await kioskHtml5QrCode.stop(); } catch(e) { console.warn(e); }
+                }
+                handleKioskScan(decodedText, gymId);
+            };
+
+            kioskHtml5QrCode.start({ facingMode: "user" }, config, qrCodeSuccessCallback)
+                .catch(err => {
+                    console.error("Impossible de démarrer le scanner en mode selfie, tentative avec la caméra arrière.", err);
+                    kioskHtml5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+                        .catch(err2 => document.getElementById('kiosk-result').innerHTML = `<p class="text-red-400">Erreur Caméra: Impossible d'accéder à la caméra.</p>`);
+                });
+        }
+
+        async function handleKioskScan(scannedId, gymId) {
+            const resultDiv = document.getElementById('kiosk-result');
+            try {
+                const memberRef = doc(db, "gyms", gymId, "members", scannedId);
+                const personnelRef = doc(db, "gyms", gymId, "personnel", scannedId);
+                const memberSnap = await getDoc(memberRef);
+                const personnelSnap = await getDoc(personnelRef);
+
+                let person, personType;
+                if (memberSnap.exists()) {
+                    person = { id: memberSnap.id, ...memberSnap.data() };
+                    personType = 'member';
+                } else if (personnelSnap.exists()) {
+                    person = { id: personnelSnap.id, ...personnelSnap.data() };
+                    personType = 'personnel';
+                } else {
+                    throw new Error("QR Code non reconnu.");
+                }
+
+                const fullName = `${person.firstname} ${person.lastname}`;
+                let statusInfo = { allowed: false, message: "Accès refusé" };
+
+                if (personType === 'member') {
+                    const status = getMemberStatus(person);
+                    if (status.key === 'active' || status.key === 'expiring') {
+                        const endDate = person.date_fin_abonnement?.toDate()?.toLocaleDateString('fr-FR') || '';
+                        statusInfo = { allowed: true, message: `Abonnement valide. Fin: ${endDate}`};
+                    } else {
+                        statusInfo = { allowed: false, message: `Abonnement ${status.status}`};
+                    }
+                } else {
+                    statusInfo = { allowed: true, message: `Employé(e) : ${person.role || 'N/A'}`};
+                }
+
+                resultDiv.innerHTML = statusInfo.allowed 
+                    ? `<p class="text-green-400 text-3xl">Bienvenue ${person.firstname} !</p><p class="text-slate-300 text-xl mt-2">${statusInfo.message}</p>`
+                    : `<p class="text-red-400 text-3xl">Accès Refusé</p><p class="text-slate-300 text-xl mt-2">${fullName}<br>${statusInfo.message}</p>`;
+
+                const photo = await captureSelfie();
+                await addDoc(collection(db, "gyms", gymId, "scan_notifications"), {
+                    name: fullName,
+                    status: statusInfo.allowed ? "Autorisé" : "Refusé",
+                    message: statusInfo.message,
+                    photoDataUrl: photo,
+                    timestamp: serverTimestamp()
+                });
+
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="text-red-400">${error.message}</p>`;
+            } finally {
+                setTimeout(() => startKioskScanner(gymId), 5000);
+            }
+        }
+
+        async function captureSelfie() {
+            const video = document.getElementById('selfie-video');
+            const canvas = document.getElementById('selfie-canvas');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                video.srcObject = stream;
+                await new Promise(resolve => video.onloadedmetadata = resolve);
+                await video.play();
+
+                await new Promise(resolve => setTimeout(resolve, 500)); 
+
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+                
+                stream.getTracks().forEach(track => track.stop());
+                return canvas.toDataURL('image/jpeg', 0.7);
+            } catch (err) {
+                console.error("Erreur de capture selfie:", err);
+                return 'https://placehold.co/80x80/e2e8f0/475569?text=No+Cam';
+            }
+        }
+        
+        function listenToScanNotifications() {
+            if (isReadOnlyMode) return;
+            unsubscribeScanNotifications();
+            
+            const q = query(
+                collection(db, "gyms", currentUserId, "scan_notifications"),
+                where("timestamp", ">", new Date()),
+                orderBy("timestamp", "desc")
+            );
+
+            unsubscribeScanNotifications = onSnapshot(q, (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === "added") {
+                        showScanNotification(change.doc.data());
+                    }
+                });
+            }, (error) => console.error("Error listening to scan notifications:", error));
+        }
+
+        function showScanNotification(data) {
+            const toast = document.getElementById('scan-notification-toast');
+            if(!toast) return;
+
+            const isAllowed = data.status === 'Autorisé';
+            
+            toast.className = `fixed bottom-5 right-5 bg-white p-4 rounded-lg shadow-xl z-[100] w-full max-w-sm transition-transform duration-500 translate-x-0 ${isAllowed ? 'border-green-500' : 'border-red-500'} border-l-4`;
+
+            toast.innerHTML = `
+                <div class="flex items-start gap-4">
+                    <img src="${data.photoDataUrl || 'https://placehold.co/80x80/e2e8f0/475569?text=Photo'}" alt="photo" class="w-20 h-20 rounded-md object-cover bg-slate-200">
+                    <div class="flex-1">
+                        <p class="font-bold text-lg">${data.name}</p>
+                        <p class="font-semibold ${isAllowed ? 'text-green-600' : 'text-red-600'}">${data.status}</p>
+                        <p class="text-sm text-slate-600">${data.message}</p>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.style.transform = 'translateX(120%)'" class="text-slate-400 hover:text-slate-700 text-2xl">&times;</button>
+                </div>
+            `;
+            
+            toast.classList.remove('hidden');
+
+            setTimeout(() => {
+                toast.style.transform = 'translateX(120%)';
+            }, 10000);
         }
 
         function showMemberCard(member) {
@@ -1636,7 +1824,7 @@
                 const isRevenue = item.type === 'revenue';
                 const div = document.createElement('div');
                 div.className = 'flex justify-between items-center p-2 rounded-md hover:bg-slate-100';
-                div.innerHTML = `<div><p class="font-semibold">${item.desc}</p><p class="text-sm text-slate-500">${item.date?.toLocaleDateString('fr-FR')}</p></div><p class="font-bold mr-4 ${isRevenue ? 'text-green-600' : 'text-red-600'}">${isRevenue ? '+' : '-'} ${formatter.format(item.amount)}</p><button class="delete-transaction-btn text-slate-400 hover:text-red-600 p-1" data-id="${item.id}" data-type="${item.type}"><i class="ph-bold ph-trash text-lg"></i></button>`;
+                div.innerHTML = `<div><p class="font-semibold">${item.desc}</p><p class="text-sm text-slate-500">${item.date?.toLocaleDateString('fr-FR')}</p></div><div class="flex items-center"><p class="font-bold mr-4 ${isRevenue ? 'text-green-600' : 'text-red-600'}">${isRevenue ? '+' : '-'} ${formatter.format(item.amount)}</p><button class="delete-transaction-btn text-slate-400 hover:text-red-600 p-1" data-id="${item.id}" data-type="${item.type}"><i class="ph-bold ph-trash text-lg"></i></button></div>`;
                 container.appendChild(div);
             });
         }
@@ -1657,9 +1845,9 @@
             } else {
                  headers = ['Nom', 'Prénom', 'Téléphone', 'Email', 'Type', 'Statut', 'Date Fin / Séances Restantes'];
                  data = allMembers.map(m => {
-                    const statusInfo = getMemberStatus(m);
-                    const value = m.memberType === 'subscription' ? (m.date_fin_abonnement?.toDate().toLocaleDateString('fr-FR') || 'N/A') : m.seances_restantes;
-                    return [m.lastname, m.firstname, m.phone, m.email, m.memberType, statusInfo.status, value];
+                     const statusInfo = getMemberStatus(m);
+                     const value = m.memberType === 'subscription' ? (m.date_fin_abonnement?.toDate().toLocaleDateString('fr-FR') || 'N/A') : m.seances_restantes;
+                     return [m.lastname, m.firstname, m.phone, m.email, m.memberType, statusInfo.status, value];
                  });
                 filename = `Liste_Membres_${new Date().toISOString().split('T')[0]}.csv`;
             }
@@ -1706,5 +1894,3 @@
     </script>
 </body>
 </html>
-
-
