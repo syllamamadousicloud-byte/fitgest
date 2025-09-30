@@ -54,6 +54,7 @@
                 <div class="flex border-b mb-6">
                     <button id="manager-tab" class="flex-1 py-2 font-semibold border-b-2 border-blue-600 text-blue-600">Gérant</button>
                     <button id="consultation-tab" class="flex-1 py-2 font-semibold text-slate-500">Propriétaire</button>
+                    <button id="kiosk-tab" class="flex-1 py-2 font-semibold text-slate-500">Kiosque</button>
                 </div>
 
                 <div id="manager-login-form">
@@ -81,10 +82,20 @@
                          <p id="consultation-login-error" class="text-red-500 text-sm text-center"></p>
                      </div>
                 </div>
+
+                <div id="kiosk-login-form" class="hidden">
+                     <h2 class="text-xl font-semibold text-center text-slate-600 mb-6">Accès Kiosque</h2>
+                     <div class="space-y-4">
+                         <input type="text" id="kiosk-gym-id-input" placeholder="Identifiant de la salle" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                         <button id="launch-kiosk-button" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors duration-300 flex justify-center items-center">
+                             <span>Lancer le Scan</span>
+                         </button>
+                         <p id="kiosk-login-error" class="text-red-500 text-sm text-center"></p>
+                     </div>
+                </div>
             </div>
         </div>
         
-        <!-- NOUVEAU: Vue Kiosque (pour la tablette à l'entrée) -->
         <div id="kiosk-view" class="hidden">
             <div class="flex flex-col items-center justify-center h-screen bg-slate-900 text-white p-4 text-center">
                 <div class="flex items-center mb-4">
@@ -95,18 +106,14 @@
                 
                 <div id="kiosk-qr-reader" class="w-full max-w-sm md:max-w-md bg-slate-800 rounded-lg overflow-hidden shadow-2xl"></div>
 
-                <!-- Zone pour afficher le résultat du scan -->
                 <div id="kiosk-result" class="mt-8 text-2xl font-bold h-24"></div>
 
-                <!-- Éléments cachés pour la capture photo -->
                 <video id="selfie-video" playsinline class="hidden"></video>
                 <canvas id="selfie-canvas" class="hidden"></canvas>
             </div>
         </div>
 
-        <!-- Vue principale de l'application (cachée par défaut) -->
         <div id="main-view" class="hidden">
-            <!-- Header -->
             <header class="flex justify-between items-center mb-6">
                  <div class="flex items-center">
                      <i class="ph-bold ph-barbell text-4xl text-blue-600"></i>
@@ -123,7 +130,6 @@
                  </div>
             </header>
 
-            <!-- Navigation -->
             <nav class="flex space-x-2 bg-slate-200 p-1 rounded-lg mb-6">
                 <button data-view="dashboard" class="nav-button flex-1 py-2 px-4 rounded-md font-semibold text-slate-600">
                     <i class="ph ph-gauge mr-1"></i> Tableau de Bord
@@ -142,7 +148,6 @@
                 </button>
             </nav>
 
-            <!-- Section Tableau de Bord -->
             <div id="dashboard-section" class="hidden">
                 <h2 id="dashboard-title" class="text-2xl font-bold mb-4 cursor-pointer" title="Cliquez 5 fois pour les options avancées">Vue d'Ensemble</h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -182,7 +187,6 @@
                 </div>
             </div>
 
-            <!-- Section Membres -->
             <div id="members-section">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div class="relative">
@@ -214,7 +218,6 @@
                 </div>
             </div>
 
-            <!-- Section Finances -->
             <div id="finance-section" class="hidden">
                 <div class="flex justify-end mb-4">
                      <button id="add-charge-button" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center">
@@ -262,9 +265,7 @@
                     </div>
                 </div>
                 <div class="bg-white p-4 rounded-2xl shadow-lg min-h-[300px]">
-                    <div id="sessions-history-list" class="space-y-2">
-                        <!-- L'historique sera injecté ici -->
-                    </div>
+                    <div id="sessions-history-list" class="space-y-2"></div>
                     <p id="no-sessions-message" class="text-center text-slate-500 py-10 hidden">Aucune présence enregistrée pour cette date.</p>
                     <div id="sessions-loader" class="text-center text-slate-500 py-10">
                         <i class="ph-bold ph-circle-notch text-4xl animate-spin text-blue-500"></i>
@@ -283,9 +284,7 @@
                     </div>
                 </div>
                 <div class="bg-white p-4 rounded-2xl shadow-lg min-h-[300px]">
-                    <div id="personnel-list-container" class="space-y-4">
-                        <!-- Les employés seront injectés ici -->
-                    </div>
+                    <div id="personnel-list-container" class="space-y-4"></div>
                     <p id="no-personnel-message" class="text-center text-slate-500 py-10 hidden">Aucun employé trouvé.</p>
                     <div id="personnel-loader" class="text-center text-slate-500 py-10">
                         <i class="ph-bold ph-circle-notch text-4xl animate-spin text-blue-500"></i>
@@ -294,15 +293,10 @@
                 </div>
             </div>
 
-            <!-- NOUVEAU: Toast de Notification pour le Gérant -->
-            <div id="scan-notification-toast" class="hidden fixed bottom-5 right-5 bg-white p-4 rounded-lg shadow-xl z-[100] border-l-4 w-full max-w-sm transition-transform duration-500 translate-x-[120%]">
-                <!-- Le contenu sera injecté par JavaScript -->
-            </div>
+            <div id="scan-notification-toast" class="hidden fixed bottom-5 right-5 bg-white p-4 rounded-lg shadow-xl z-[100] border-l-4 w-full max-w-sm transition-transform duration-500 translate-x-[120%]"></div>
         </div>
     </div>
 
-
-    <!-- Modals -->
     <div id="member-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-slate-50 rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
@@ -399,7 +393,6 @@
         </div>
     </div>
 
-
     <div id="view-member-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-50">
          <div class="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
@@ -422,7 +415,6 @@
            </div>
         </div>
     </div>
-
 
     <div id="charge-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-slate-50 rounded-2xl p-6 w-full max-w-md">
@@ -508,14 +500,11 @@
         </div>
     </div>
 
-
-    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyCvWaZP0moEZGNFfSRltvipPmU7-hbqrCI",
             authDomain: "mr-sylla.firebaseapp.com",
@@ -526,8 +515,7 @@
         };
         const SUPERVISOR_PIN = "5008";
         
-        // --- DOM ELEMENTS & STATE ---
-        const loginView = document.getElementById('login-view'), mainView = document.getElementById('main-view'), memberModal = document.getElementById('member-modal'), viewMemberModal = document.getElementById('view-member-modal'), pinModal = document.getElementById('pin-modal'), qrScannerModal = document.getElementById('qr-scanner-modal'), cardModal = document.getElementById('card-modal'), alertModal = document.getElementById('alert-modal'), confirmModal = document.getElementById('confirm-modal'), promptModal = document.getElementById('prompt-modal'), chargeModal = document.getElementById('charge-modal'), consultationLoginForm = document.getElementById('consultation-login-form'), managerLoginForm = document.getElementById('manager-login-form'), sessionsSection = document.getElementById('sessions-section'), personnelModal = document.getElementById('personnel-modal'), personnelSection = document.getElementById('personnel-section'), personnelSessionsModal = document.getElementById('personnel-sessions-modal');
+        const loginView = document.getElementById('login-view'), mainView = document.getElementById('main-view'), memberModal = document.getElementById('member-modal'), viewMemberModal = document.getElementById('view-member-modal'), pinModal = document.getElementById('pin-modal'), qrScannerModal = document.getElementById('qr-scanner-modal'), cardModal = document.getElementById('card-modal'), alertModal = document.getElementById('alert-modal'), confirmModal = document.getElementById('confirm-modal'), promptModal = document.getElementById('prompt-modal'), chargeModal = document.getElementById('charge-modal'), consultationLoginForm = document.getElementById('consultation-login-form'), managerLoginForm = document.getElementById('manager-login-form'), kioskLoginForm = document.getElementById('kiosk-login-form'), sessionsSection = document.getElementById('sessions-section'), personnelModal = document.getElementById('personnel-modal'), personnelSection = document.getElementById('personnel-section'), personnelSessionsModal = document.getElementById('personnel-sessions-modal');
         
         let db, auth;
         let currentUserId = null, isReadOnlyMode = false;
@@ -537,9 +525,7 @@
         let dangerZoneClickCount = 0;
         let lastClickTimestamp = 0;
         let unsubscribeMembers = () => {}, unsubscribePayments = () => {}, unsubscribeCharges = () => {}, unsubscribeSessions = () => {}, unsubscribePersonnel = () => {}, unsubscribePersonnelSessions = () => {};
-        let unsubscribeScanNotifications = () => {}; // NOUVEAU
-
-        // --- FULL SCRIPT LOGIC ---
+        let unsubscribeScanNotifications = () => {};
 
         function setupEventListeners() {
             document.getElementById('login-button').addEventListener('click', handleLogin);
@@ -599,19 +585,39 @@
             document.getElementById('close-charge-modal-button').addEventListener('click', () => chargeModal.classList.add('hidden'));
             document.getElementById('cancel-charge-button').addEventListener('click', () => chargeModal.classList.add('hidden'));
             document.getElementById('charge-form').addEventListener('submit', handleChargeFormSubmit);
-            document.getElementById('manager-tab').addEventListener('click', () => {
+
+            const managerTab = document.getElementById('manager-tab');
+            const consultationTab = document.getElementById('consultation-tab');
+            const kioskTab = document.getElementById('kiosk-tab');
+
+            managerTab.addEventListener('click', () => {
                 managerLoginForm.classList.remove('hidden');
                 consultationLoginForm.classList.add('hidden');
-                document.getElementById('manager-tab').classList.add('border-blue-600', 'text-blue-600');
-                document.getElementById('consultation-tab').classList.remove('border-blue-600', 'text-blue-600');
+                kioskLoginForm.classList.add('hidden');
+                managerTab.classList.add('border-blue-600', 'text-blue-600');
+                consultationTab.classList.remove('border-blue-600', 'text-blue-600');
+                kioskTab.classList.remove('border-blue-600', 'text-blue-600');
             });
-            document.getElementById('consultation-tab').addEventListener('click', () => {
+            consultationTab.addEventListener('click', () => {
                 managerLoginForm.classList.add('hidden');
                 consultationLoginForm.classList.remove('hidden');
-                document.getElementById('consultation-tab').classList.add('border-blue-600', 'text-blue-600');
-                document.getElementById('manager-tab').classList.remove('border-blue-600', 'text-blue-600');
+                kioskLoginForm.classList.add('hidden');
+                consultationTab.classList.add('border-blue-600', 'text-blue-600');
+                managerTab.classList.remove('border-blue-600', 'text-blue-600');
+                kioskTab.classList.remove('border-blue-600', 'text-blue-600');
             });
+            kioskTab.addEventListener('click', () => {
+                managerLoginForm.classList.add('hidden');
+                consultationLoginForm.classList.add('hidden');
+                kioskLoginForm.classList.remove('hidden');
+                kioskTab.classList.add('border-blue-600', 'text-blue-600');
+                managerTab.classList.remove('border-blue-600', 'text-blue-600');
+                consultationTab.classList.remove('border-blue-600', 'text-blue-600');
+            });
+
             document.getElementById('consultation-login-button').addEventListener('click', handleConsultationLogin);
+            document.getElementById('launch-kiosk-button').addEventListener('click', handleLaunchKiosk); 
+            
             document.getElementById('session-date-filter').addEventListener('change', renderSessionsHistory);
             document.getElementById('add-personnel-button').addEventListener('click', showAddPersonnelModal);
             document.getElementById('close-personnel-modal-button').addEventListener('click', () => personnelModal.classList.add('hidden'));
@@ -633,7 +639,6 @@
             document.getElementById('close-personnel-sessions-bottom-btn').addEventListener('click', () => personnelSessionsModal.classList.add('hidden'));
         }
 
-        // NOUVEAU: Logique de démarrage modifiée pour gérer le mode kiosque
         function startApp() {
             try {
                 const app = initializeApp(firebaseConfig);
@@ -645,13 +650,11 @@
                 const gymId = urlParams.get('gymId');
 
                 if (mode === 'kiosk' && gymId) {
-                    // Démarrage en mode Kiosque (pas de login requis)
                     currentUserId = gymId;
-                    document.getElementById('app').classList.add('hidden'); // Cacher le conteneur principal
+                    document.getElementById('app').classList.add('hidden');
                     document.getElementById('kiosk-view').classList.remove('hidden');
                     startKioskScanner(gymId);
                 } else {
-                    // Démarrage normal avec authentification
                     setupEventListeners();
                     setupAuthObserver();
                     document.getElementById('session-date-filter').valueAsDate = new Date();
@@ -692,7 +695,7 @@
             listenToSessions();
             listenToPersonnel();
             listenToPersonnelSessions();
-            listenToScanNotifications(); // NOUVEAU
+            listenToScanNotifications();
         }
 
         function unsubscribeData() {
@@ -702,7 +705,7 @@
             unsubscribeSessions();
             unsubscribePersonnel();
             unsubscribePersonnelSessions();
-            unsubscribeScanNotifications(); // NOUVEAU
+            unsubscribeScanNotifications();
         }
 
         function listenToPersonnel() {
@@ -958,13 +961,25 @@
             }
         }
         
+        function handleLaunchKiosk() {
+            const gymId = document.getElementById('kiosk-gym-id-input').value.trim();
+            const errorP = document.getElementById('kiosk-login-error');
+            errorP.textContent = '';
+
+            if (!gymId) {
+                errorP.textContent = "Veuillez entrer un identifiant de salle.";
+                return;
+            }
+
+            currentUserId = gymId;
+            document.getElementById('app').classList.add('hidden');
+            document.getElementById('kiosk-view').classList.remove('hidden');
+            startKioskScanner(gymId);
+        }
+        
         async function handleLogout() {
             if (isReadOnlyMode) {
-                isReadOnlyMode = false, currentUserId = null;
-                mainView.classList.add('hidden');
-                loginView.classList.remove('hidden');
-                unsubscribeData();
-                resetUI();
+                window.location.reload();
             } else {
                 try { await signOut(auth); } catch (error) { console.error("Sign out failed:", error); }
             }
@@ -992,7 +1007,7 @@
                 } else {
                     const memberType = document.getElementById('member-type').value;
                     memberData.memberType = memberType;
-                    memberData.status = 'actif'; // Default status for new members
+                    memberData.status = 'actif';
                     if (memberType === 'subscription') {
                         const duration = parseInt(document.getElementById('subscription-duration').value, 10);
                         if (isNaN(duration) || duration <= 0) throw new Error("Durée d'abonnement invalide.");
@@ -1093,7 +1108,7 @@
                 }
             }
         }
-
+        
         async function endContract(id) {
              const staff = allPersonnel.find(p => p.id === id);
              if (!staff) return;
@@ -1238,7 +1253,7 @@
                 try {
                     await showAlert("Suppression en cours...", "info");
                     const batch = writeBatch(db);
-                    const collectionsToDelete = ["members", "payments", "charges", "sessions", "personnel", "personnel_sessions"];
+                    const collectionsToDelete = ["members", "payments", "charges", "sessions", "personnel", "personnel_sessions", "scan_notifications"];
                     for(const col of collectionsToDelete) {
                         const snapshot = await getDocs(collection(db, "gyms", currentUserId, col));
                         snapshot.forEach(doc => batch.delete(doc.ref));
@@ -1376,7 +1391,7 @@
                  } else if (member.memberType === 'subscription') {
                      mainActionBtn = `<button id="renew-btn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Renouveler</button>
                                        <button id="suspend-btn" class="flex-1 bg-yellow-500 text-white font-bold py-3 rounded-lg hover:bg-yellow-600 transition-colors">Suspendre</button>`;
-                 } else { // session type
+                 } else {
                      mainActionBtn = `<button id="deduct-btn" class="flex-1 bg-orange-500 text-white font-bold py-3 rounded-lg hover:bg-orange-600 transition-colors">Décompter 1 Séance</button>
                                       <button id="add-sessions-btn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Ajouter des Séances</button>`;
                  }
@@ -1473,7 +1488,6 @@
             }).then(result => { promptModal.classList.add('hidden'); return result; });
         }
         
-        // --- QR CODE & CARD ---
         let html5QrCode = null;
         function startQrScanner() {
             document.getElementById('qr-scanner-title').textContent = 'Scannez un QR Code';
@@ -1576,8 +1590,6 @@
             if(html5QrCode?.isScanning) html5QrCode.stop().catch(err => console.log("QR scanner stop failed", err));
             qrScannerModal.classList.add('hidden');
         }
-
-        // --- NOUVEAU: Fonctions pour le mode Kiosque et les notifications ---
 
         let kioskHtml5QrCode = null;
 
@@ -1766,7 +1778,7 @@
             const listContainer = document.getElementById('personnel-sessions-list');
             listContainer.innerHTML = '';
 
-            const sessions = allPersonnelSessions.filter(s => s.personnel_id === personnelId).slice(0, 50); // Get last 50 sessions
+            const sessions = allPersonnelSessions.filter(s => s.personnel_id === personnelId).slice(0, 50);
             if (sessions.length === 0) {
                 listContainer.innerHTML = `<p class="text-center text-slate-500 py-4">Aucun pointage enregistré.</p>`;
             } else {
@@ -1789,7 +1801,6 @@
             personnelSessionsModal.classList.remove('hidden');
         }
         
-        // --- FINANCE & REPORTS ---
         function updateDashboard() {
             const now = new Date();
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -1803,21 +1814,24 @@
             allPayments.forEach(p => { if (p.date_paiement && p.date_paiement.toDate() >= startOfMonth) revenueMonth += p.montant; });
             allCharges.forEach(c => { if (c.date && c.date.toDate() >= startOfMonth) chargesMonth += c.montant; });
             const format = (val) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(val);
-            document.getElementById('db-active-members').textContent = activeCount;
-            document.getElementById('db-expiring-soon').textContent = expiringCount;
-            document.getElementById('db-new-this-month').textContent = newThisMonthCount;
-            document.getElementById('db-revenue-month').textContent = format(revenueMonth);
-            document.getElementById('db-charges-month').textContent = format(chargesMonth);
-            document.getElementById('db-net-profit-month').textContent = format(revenueMonth - chargesMonth);
+            if(document.getElementById('db-active-members')) {
+                document.getElementById('db-active-members').textContent = activeCount;
+                document.getElementById('db-expiring-soon').textContent = expiringCount;
+                document.getElementById('db-new-this-month').textContent = newThisMonthCount;
+                document.getElementById('db-revenue-month').textContent = format(revenueMonth);
+                document.getElementById('db-charges-month').textContent = format(chargesMonth);
+                document.getElementById('db-net-profit-month').textContent = format(revenueMonth - chargesMonth);
+            }
         }
 
         function renderFinancialHistory() {
             const container = document.getElementById('financial-history-list');
             const noTransacMsg = document.getElementById('no-transactions-message');
+            if (!container) return;
             container.innerHTML = '';
             const revenues = allPayments.map(p => ({ type: 'revenue', id: p.id, date: p.date_paiement?.toDate(), desc: `${p.membre_nom_complet} - ${p.description}`, amount: p.montant }));
             const expenses = allCharges.map(c => ({ type: 'expense', id: c.id, date: c.date?.toDate(), desc: c.description, amount: c.montant }));
-            const history = [...revenues, ...expenses].sort((a, b) => b.date - a.date);
+            const history = [...revenues, ...expenses].sort((a, b) => (b.date || 0) - (a.date || 0));
             noTransacMsg.classList.toggle('hidden', history.length > 0);
             const formatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' });
             history.forEach(item => {
@@ -1858,7 +1872,7 @@
         function exportToCsv(filename, rows) {
             const processRow = row => row.map(val => {
                 let innerValue = val === null || val === undefined ? '' : String(val);
-                if (String(innerValue).includes(',')) innerValue = '"' + innerValue.replace(/"/g, '""') + '"';
+                if (String(innerValue).includes(';')) innerValue = '"' + innerValue.replace(/"/g, '""') + '"';
                 return innerValue;
             }).join(';') + '\n';
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF" + rows.map(processRow).join('');
@@ -1894,3 +1908,4 @@
     </script>
 </body>
 </html>
+
