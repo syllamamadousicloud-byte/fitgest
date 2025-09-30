@@ -11,7 +11,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/phosphor-icons/1.4.2/css/phosphor.min.css" rel="stylesheet">
     <style>
         @media print {
-            body.printing #app, body.printing .modal-buttons {
+            body.printing #app, body.printing .modal-buttons, body.printing #kiosk-view {
                 display: none;
             }
             body.printing #card-modal {
@@ -33,6 +33,10 @@
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
+        /* Style for the live scan feed */
+        #live-scan-feed {
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+        }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans">
@@ -48,10 +52,10 @@
             <div class="bg-white p-8 rounded-2xl shadow-lg max-w-sm mx-auto mt-20">
                 <div class="flex items-center justify-center mb-6">
                     <i class="ph-bold ph-barbell text-5xl text-blue-600"></i>
-                    <h1 class="text-3xl font-bold ml-3">FIT TRACK</h1>
+                    <h1 id="app-title-login" class="text-3xl font-bold ml-3">FIT TRACK</h1>
                 </div>
 
-                <div class="flex border-b mb-6">
+                <div class="grid grid-cols-3 border-b mb-6 text-center">
                     <button id="manager-tab" class="flex-1 py-2 font-semibold border-b-2 border-blue-600 text-blue-600">Gérant</button>
                     <button id="consultation-tab" class="flex-1 py-2 font-semibold text-slate-500">Propriétaire</button>
                     <button id="kiosk-tab" class="flex-1 py-2 font-semibold text-slate-500">Kiosque</button>
@@ -71,135 +75,84 @@
                 </div>
                 
                 <div id="consultation-login-form" class="hidden">
-                     <h2 class="text-xl font-semibold text-center text-slate-600 mb-6">Accès Propriétaire</h2>
-                     <div class="space-y-4">
-                         <input type="text" id="gym-id-input" placeholder="Identifiant de la salle" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                         <input type="password" id="consultation-pin-input" placeholder="Code PIN" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500" inputmode="numeric" maxlength="4">
-                         <button id="consultation-login-button" class="w-full bg-slate-700 text-white font-bold py-3 rounded-lg hover:bg-slate-800 transition-colors duration-300 flex justify-center items-center">
-                             <span class="btn-text">Accéder</span>
-                             <i class="ph-bold ph-circle-notch spinner text-2xl hidden"></i>
-                         </button>
-                         <p id="consultation-login-error" class="text-red-500 text-sm text-center"></p>
-                     </div>
-                </div>
-
-                <div id="kiosk-login-form" class="hidden">
-                     <h2 class="text-xl font-semibold text-center text-slate-600 mb-6">Accès Kiosque</h2>
-                     <div class="space-y-4">
-                         <input type="text" id="kiosk-gym-id-input" placeholder="Identifiant de la salle" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                         <button id="launch-kiosk-button" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors duration-300 flex justify-center items-center">
-                             <span>Lancer le Scan</span>
-                         </button>
-                         <p id="kiosk-login-error" class="text-red-500 text-sm text-center"></p>
-                     </div>
+                    <h2 class="text-xl font-semibold text-center text-slate-600 mb-6">Accès Propriétaire</h2>
+                    <div class="space-y-4">
+                        <input type="text" id="gym-id-input" placeholder="Identifiant de la salle" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="password" id="consultation-pin-input" placeholder="Code PIN" class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500" inputmode="numeric" maxlength="4">
+                        <button id="consultation-login-button" class="w-full bg-slate-700 text-white font-bold py-3 rounded-lg hover:bg-slate-800 transition-colors duration-300 flex justify-center items-center">
+                            <span class="btn-text">Accéder</span>
+                            <i class="ph-bold ph-circle-notch spinner text-2xl hidden"></i>
+                        </button>
+                        <p id="consultation-login-error" class="text-red-500 text-sm text-center"></p>
+                    </div>
                 </div>
             </div>
         </div>
-        
-        <div id="kiosk-view" class="hidden">
-            <div class="flex flex-col items-center justify-center h-screen bg-slate-900 text-white p-4 text-center">
-                <div class="flex items-center mb-4">
-                    <i class="ph-bold ph-barbell text-5xl text-blue-400"></i>
-                    <h1 class="text-4xl font-bold ml-3">FIT TRACK</h1>
-                </div>
-                <p class="text-xl text-slate-300 mb-8">Veuillez scanner votre QR code pour entrer.</p>
-                
-                <div id="kiosk-qr-reader" class="w-full max-w-sm md:max-w-md bg-slate-800 rounded-lg overflow-hidden shadow-2xl" style="min-height: 250px;"></div>
 
-                <div id="kiosk-result" class="mt-8 text-2xl font-bold h-24"></div>
 
-                <video id="selfie-video" playsinline class="hidden"></video>
-                <canvas id="selfie-canvas" class="hidden"></canvas>
-            </div>
-        </div>
-
+        <!-- Vue principale de l'application (cachée par défaut) -->
         <div id="main-view" class="hidden">
+            <!-- Header -->
             <header class="flex justify-between items-center mb-6">
-                 <div class="flex items-center">
-                     <i class="ph-bold ph-barbell text-4xl text-blue-600"></i>
-                     <h1 class="text-2xl md:text-3xl font-bold ml-3">FIT TRACK</h1>
-                 </div>
-                 <div class="text-right">
-                     <div id="gym-id-display" class="hidden text-xs bg-slate-200 text-slate-600 px-2 py-1 rounded-md inline-block mb-1">
-                         ID de la salle : <span id="gym-id-text" class="font-semibold"></span>
-                     </div>
-                     <p id="user-email" class="text-sm text-slate-500"></p>
-                     <button id="logout-button" class="text-sm font-semibold text-red-600 hover:underline">
-                         Déconnexion
-                     </button>
-                 </div>
+                <div class="flex items-center">
+                    <i class="ph-bold ph-barbell text-4xl text-blue-600"></i>
+                    <h1 id="app-title-main" class="text-2xl md:text-3xl font-bold ml-3">FIT TRACK</h1>
+                </div>
+                <div class="text-right">
+                    <div id="gym-id-display" class="hidden text-xs bg-slate-200 text-slate-600 px-2 py-1 rounded-md inline-block mb-1">
+                        ID de la salle : <span id="gym-id-text" class="font-semibold"></span>
+                    </div>
+                    <p id="user-email" class="text-sm text-slate-500"></p>
+                    <button id="logout-button" class="text-sm font-semibold text-red-600 hover:underline">
+                        Déconnexion
+                    </button>
+                </div>
             </header>
 
-            <nav class="flex space-x-2 bg-slate-200 p-1 rounded-lg mb-6">
-                <button data-view="dashboard" class="nav-button flex-1 py-2 px-4 rounded-md font-semibold text-slate-600">
-                    <i class="ph ph-gauge mr-1"></i> Tableau de Bord
-                </button>
-                <button data-view="personnel" class="nav-button flex-1 py-2 px-4 rounded-md font-semibold text-slate-600">
-                    <i class="ph ph-users-three mr-1"></i> Personnel
-                </button>
-                <button data-view="members" class="nav-button flex-1 py-2 px-4 rounded-md font-semibold bg-white text-blue-600 shadow">
-                    <i class="ph ph-users mr-1"></i> Membres
-                </button>
-                <button data-view="finance" class="nav-button flex-1 py-2 px-4 rounded-md font-semibold text-slate-600">
-                    <i class="ph ph-chart-line mr-1"></i> Finances
-                </button>
-                <button data-view="sessions" class="nav-button flex-1 py-2 px-4 rounded-md font-semibold text-slate-600">
-                    <i class="ph ph-clock-counter-clockwise mr-1"></i> Présences
-                </button>
+            <!-- Navigation -->
+            <nav class="flex space-x-2 bg-slate-200 p-1 rounded-lg mb-6 overflow-x-auto">
+                <button data-view="dashboard" class="nav-button flex-1 py-2 px-4 rounded-md font-semibold text-slate-600 whitespace-nowrap"><i class="ph ph-gauge mr-1"></i> Tableau de Bord</button>
+                <button data-view="personnel" class="nav-button flex-1 py-2 px-4 rounded-md font-semibold text-slate-600 whitespace-nowrap"><i class="ph ph-users-three mr-1"></i> Personnel</button>
+                <button data-view="members" class="nav-button flex-1 py-2 px-4 rounded-md font-semibold bg-white text-blue-600 shadow whitespace-nowrap"><i class="ph ph-users mr-1"></i> Membres</button>
+                <button data-view="finance" class="nav-button flex-1 py-2 px-4 rounded-md font-semibold text-slate-600 whitespace-nowrap"><i class="ph ph-chart-line mr-1"></i> Finances</button>
+                <button data-view="sessions" class="nav-button flex-1 py-2 px-4 rounded-md font-semibold text-slate-600 whitespace-nowrap"><i class="ph ph-clock-counter-clockwise mr-1"></i> Présences</button>
+                <button data-view="settings" class="nav-button flex-1 py-2 px-4 rounded-md font-semibold text-slate-600 whitespace-nowrap"><i class="ph ph-gear mr-1"></i> Paramètres</button>
             </nav>
 
+            <!-- Section Tableau de Bord -->
             <div id="dashboard-section" class="hidden">
                 <h2 id="dashboard-title" class="text-2xl font-bold mb-4 cursor-pointer" title="Cliquez 5 fois pour les options avancées">Vue d'Ensemble</h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div class="bg-white p-4 rounded-xl shadow">
-                        <h3 class="font-semibold text-slate-500 flex items-center"><i class="ph ph-user-circle-check text-green-500 mr-2"></i>Membres Actifs</h3>
-                        <p id="db-active-members" class="text-3xl font-bold mt-2">0</p>
-                    </div>
-                     <div class="bg-white p-4 rounded-xl shadow">
-                        <h3 class="font-semibold text-slate-500 flex items-center"><i class="ph ph-user-circle-gear text-orange-500 mr-2"></i>Expire Bientôt</h3>
-                        <p id="db-expiring-soon" class="text-3xl font-bold mt-2">0</p>
-                    </div>
-                     <div class="bg-white p-4 rounded-xl shadow">
-                        <h3 class="font-semibold text-slate-500 flex items-center"><i class="ph ph-user-circle-plus text-blue-500 mr-2"></i>Nouveaux ce Mois-ci</h3>
-                        <p id="db-new-this-month" class="text-3xl font-bold mt-2">0</p>
-                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow"><h3 class="font-semibold text-slate-500 flex items-center"><i class="ph ph-user-circle-check text-green-500 mr-2"></i>Membres Actifs</h3><p id="db-active-members" class="text-3xl font-bold mt-2">0</p></div>
+                    <div class="bg-white p-4 rounded-xl shadow"><h3 class="font-semibold text-slate-500 flex items-center"><i class="ph ph-user-circle-gear text-orange-500 mr-2"></i>Expire Bientôt</h3><p id="db-expiring-soon" class="text-3xl font-bold mt-2">0</p></div>
+                    <div class="bg-white p-4 rounded-xl shadow"><h3 class="font-semibold text-slate-500 flex items-center"><i class="ph ph-user-circle-plus text-blue-500 mr-2"></i>Nouveaux ce Mois-ci</h3><p id="db-new-this-month" class="text-3xl font-bold mt-2">0</p></div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div class="bg-white p-4 rounded-xl shadow">
-                        <h3 class="font-semibold text-slate-500">Revenus (Ce Mois-ci)</h3>
-                        <p id="db-revenue-month" class="text-2xl font-bold text-green-600">0 FCFA</p>
-                    </div>
-                    <div class="bg-white p-4 rounded-xl shadow">
-                        <h3 class="font-semibold text-slate-500">Charges (Ce Mois-ci)</h3>
-                        <p id="db-charges-month" class="text-2xl font-bold text-red-600">0 FCFA</p>
-                    </div>
-                     <div class="bg-white p-4 rounded-xl shadow">
-                        <h3 class="font-semibold text-slate-500">Bénéfice Net (Ce Mois-ci)</h3>
-                        <p id="db-net-profit-month" class="text-2xl font-bold text-blue-600">0 FCFA</p>
-                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow"><h3 class="font-semibold text-slate-500">Revenus (Ce Mois-ci)</h3><p id="db-revenue-month" class="text-2xl font-bold text-green-600">0 FCFA</p></div>
+                    <div class="bg-white p-4 rounded-xl shadow"><h3 class="font-semibold text-slate-500">Charges (Ce Mois-ci)</h3><p id="db-charges-month" class="text-2xl font-bold text-red-600">0 FCFA</p></div>
+                    <div class="bg-white p-4 rounded-xl shadow"><h3 class="font-semibold text-slate-500">Bénéfice Net (Ce Mois-ci)</h3><p id="db-net-profit-month" class="text-2xl font-bold text-blue-600">0 FCFA</p></div>
                 </div>
                 <div id="danger-zone" class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow hidden mt-8">
                     <h3 class="font-bold text-lg text-red-800 mb-2">Zone de Danger</h3>
                     <p class="text-red-700 mb-4">Cette action est irréversible et supprimera toutes les données de l'application (membres, transactions, charges, présences, personnel).</p>
-                    <button id="reset-app-button" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center">
-                        <i class="ph-bold ph-warning mr-2"></i> Réinitialiser l'Application
-                    </button>
+                    <button id="reset-app-button" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center"><i class="ph-bold ph-warning mr-2"></i> Réinitialiser l'Application</button>
                 </div>
             </div>
 
-            <div id="members-section">
+            <!-- Section Membres -->
+            <div id="members-section" class="relative">
+                <!-- Live Scan Feed -->
+                <div id="live-scan-feed" class="absolute top-0 right-0 bg-white p-3 rounded-lg shadow-lg opacity-0 transform -translate-y-4 pointer-events-none z-20 w-64">
+                    <p class="text-xs text-slate-500 font-semibold mb-1">Dernier Scan</p>
+                    <p id="live-scan-name" class="font-bold"></p>
+                    <p id="live-scan-status" class="text-sm font-medium"></p>
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div class="relative">
-                        <input type="text" id="search-input" placeholder="Rechercher par nom ou téléphone..." class="w-full px-4 py-3 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    </div>
+                    <div class="relative"><input type="text" id="search-input" placeholder="Rechercher par nom ou téléphone..." class="w-full px-4 py-3 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"><i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i></div>
                     <div class="grid grid-cols-2 gap-4">
-                        <button id="scan-qr-button" class="w-full bg-slate-800 text-white font-bold py-3 rounded-lg hover:bg-slate-900 transition-colors flex items-center justify-center">
-                            <i class="ph-bold ph-qr-code text-2xl mr-2"></i> Scanner QR Code
-                        </button>
-                        <button id="add-member-button" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center">
-                           <i class="ph-bold ph-plus text-2xl mr-2"></i> Ajouter
-                        </button>
+                        <button id="scan-qr-button" class="w-full bg-slate-800 text-white font-bold py-3 rounded-lg hover:bg-slate-900 transition-colors flex items-center justify-center"><i class="ph-bold ph-qr-code text-2xl mr-2"></i> Scanner QR Code</button>
+                        <button id="add-member-button" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"><i class="ph-bold ph-plus text-2xl mr-2"></i> Ajouter</button>
                     </div>
                 </div>
                 <div class="flex space-x-2 bg-slate-200 p-1 rounded-lg mb-4">
@@ -210,301 +163,175 @@
                 </div>
                 <div class="bg-white p-4 rounded-2xl shadow-lg min-h-[300px]">
                     <div id="member-list-container" class="space-y-3"></div>
-                     <p id="no-members-message" class="text-center text-slate-500 py-10 hidden">Aucun membre trouvé.</p>
-                     <div id="loader" class="text-center text-slate-500 py-10">
-                         <i class="ph-bold ph-circle-notch text-4xl animate-spin text-blue-500"></i>
-                         <p>Chargement des données...</p>
-                     </div>
+                    <p id="no-members-message" class="text-center text-slate-500 py-10 hidden">Aucun membre trouvé.</p>
+                    <div id="loader" class="text-center text-slate-500 py-10"><i class="ph-bold ph-circle-notch text-4xl animate-spin text-blue-500"></i><p>Chargement des données...</p></div>
                 </div>
             </div>
 
+            <!-- Section Finances -->
             <div id="finance-section" class="hidden">
-                <div class="flex justify-end mb-4">
-                     <button id="add-charge-button" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center">
-                         <i class="ph-bold ph-plus mr-2"></i> Ajouter une Charge
-                     </button>
-                </div>
-                <div class="bg-white p-4 rounded-xl shadow mb-6">
-                    <h3 class="font-bold text-lg mb-4">Télécharger un Rapport</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                        <div class="md:col-span-1">
-                            <label for="report-type" class="text-sm font-medium">Type</label>
-                            <select id="report-type" class="w-full mt-1 p-2 border rounded-md">
-                                <option value="payments">Financier</option>
-                                <option value="members">Liste des Membres</option>
-                            </select>
-                        </div>
-                        <div class="md:col-span-1">
-                            <label for="report-start-date" class="text-sm font-medium">Début</label>
-                            <input type="date" id="report-start-date" class="w-full mt-1 p-2 border rounded-md">
-                        </div>
-                        <div class="md:col-span-1">
-                            <label for="report-end-date" class="text-sm font-medium">Fin</label>
-                            <input type="date" id="report-end-date" class="w-full mt-1 p-2 border rounded-md">
-                        </div>
-                        <div class="md:col-span-1">
-                            <button id="download-report-button" class="w-full bg-emerald-600 text-white font-bold py-2 rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center">
-                                <i class="ph ph-download-simple mr-2"></i> Exporter
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-white p-4 rounded-xl shadow mb-6">
-                     <h3 id="transactions-title" class="font-bold text-lg mb-4">Historique Financier</h3>
-                     <div id="financial-history-list" class="space-y-2 max-h-96 overflow-y-auto"></div>
-                     <p id="no-transactions-message" class="text-center text-slate-500 py-10 hidden">Aucune transaction.</p>
-                </div>
+                 <div class="flex justify-end mb-4"><button id="add-charge-button" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center"><i class="ph-bold ph-plus mr-2"></i> Ajouter une Charge</button></div>
+                 <div class="bg-white p-4 rounded-xl shadow mb-6">
+                     <h3 class="font-bold text-lg mb-4">Télécharger un Rapport</h3>
+                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                         <div><label for="report-type" class="text-sm font-medium">Type</label><select id="report-type" class="w-full mt-1 p-2 border rounded-md"><option value="payments">Financier</option><option value="members">Liste des Membres</option></select></div>
+                         <div><label for="report-start-date" class="text-sm font-medium">Début</label><input type="date" id="report-start-date" class="w-full mt-1 p-2 border rounded-md"></div>
+                         <div><label for="report-end-date" class="text-sm font-medium">Fin</label><input type="date" id="report-end-date" class="w-full mt-1 p-2 border rounded-md"></div>
+                         <div><button id="download-report-button" class="w-full bg-emerald-600 text-white font-bold py-2 rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center"><i class="ph ph-download-simple mr-2"></i> Exporter</button></div>
+                     </div>
+                 </div>
+                 <div class="bg-white p-4 rounded-xl shadow mb-6"><h3 id="transactions-title" class="font-bold text-lg mb-4">Historique Financier</h3><div id="financial-history-list" class="space-y-2 max-h-96 overflow-y-auto"></div><p id="no-transactions-message" class="text-center text-slate-500 py-10 hidden">Aucune transaction.</p></div>
             </div>
             
-            <div id="sessions-section" class="hidden">
-                <div class="flex flex-col md:flex-row justify-between md:items-center mb-4 gap-4">
-                    <h2 class="text-2xl font-bold">Historique des Présences Membres</h2>
-                    <div>
-                        <label for="session-date-filter" class="text-sm font-medium mr-2">Filtrer par date:</label>
-                        <input type="date" id="session-date-filter" class="p-2 border rounded-md">
-                    </div>
-                </div>
-                <div class="bg-white p-4 rounded-2xl shadow-lg min-h-[300px]">
-                    <div id="sessions-history-list" class="space-y-2"></div>
-                    <p id="no-sessions-message" class="text-center text-slate-500 py-10 hidden">Aucune présence enregistrée pour cette date.</p>
-                    <div id="sessions-loader" class="text-center text-slate-500 py-10">
-                        <i class="ph-bold ph-circle-notch text-4xl animate-spin text-blue-500"></i>
-                        <p>Chargement de l'historique...</p>
-                    </div>
-                </div>
-            </div>
+             <div id="sessions-section" class="hidden">
+                 <div class="flex flex-col md:flex-row justify-between md:items-center mb-4 gap-4">
+                     <h2 class="text-2xl font-bold">Historique des Présences Membres</h2>
+                     <div><label for="session-date-filter" class="text-sm font-medium mr-2">Filtrer par date:</label><input type="date" id="session-date-filter" class="p-2 border rounded-md"></div>
+                 </div>
+                 <div class="bg-white p-4 rounded-2xl shadow-lg min-h-[300px]">
+                     <div id="sessions-history-list" class="space-y-2"></div>
+                     <p id="no-sessions-message" class="text-center text-slate-500 py-10 hidden">Aucune présence enregistrée pour cette date.</p>
+                     <div id="sessions-loader" class="text-center text-slate-500 py-10"><i class="ph-bold ph-circle-notch text-4xl animate-spin text-blue-500"></i><p>Chargement de l'historique...</p></div>
+                 </div>
+             </div>
 
             <div id="personnel-section" class="hidden">
-                <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4">
-                    <h2 class="text-2xl font-bold">Gestion du Personnel</h2>
-                    <div class="flex gap-4">
-                        <button id="add-personnel-button" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center">
-                            <i class="ph-bold ph-plus mr-2"></i> Ajouter un employé
+                 <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4">
+                     <h2 class="text-2xl font-bold">Gestion du Personnel</h2>
+                     <div class="flex gap-4"><button id="add-personnel-button" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"><i class="ph-bold ph-plus mr-2"></i> Ajouter un employé</button></div>
+                 </div>
+                 <div class="bg-white p-4 rounded-2xl shadow-lg min-h-[300px]">
+                     <div id="personnel-list-container" class="space-y-4"></div>
+                     <p id="no-personnel-message" class="text-center text-slate-500 py-10 hidden">Aucun employé trouvé.</p>
+                     <div id="personnel-loader" class="text-center text-slate-500 py-10"><i class="ph-bold ph-circle-notch text-4xl animate-spin text-blue-500"></i><p>Chargement du personnel...</p></div>
+                 </div>
+            </div>
+
+            <!-- Section Paramètres -->
+            <div id="settings-section" class="hidden">
+                <h2 class="text-2xl font-bold mb-4">Paramètres de l'Application</h2>
+                <div class="bg-white p-6 rounded-xl shadow">
+                    <form id="settings-form">
+                        <label for="gym-name-input" class="font-semibold text-slate-700">Nom de l'entreprise</label>
+                        <p class="text-sm text-slate-500 mb-2">Ce nom sera affiché en en-tête de l'application.</p>
+                        <input type="text" id="gym-name-input" placeholder="Ex: Ma Salle de Sport" class="w-full max-w-md px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4">
+                        <button type="submit" id="save-settings-button" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center">
+                            <span class="btn-text">Enregistrer</span>
+                            <i class="ph-bold ph-circle-notch spinner text-2xl hidden"></i>
                         </button>
-                    </div>
-                </div>
-                <div class="bg-white p-4 rounded-2xl shadow-lg min-h-[300px]">
-                    <div id="personnel-list-container" class="space-y-4"></div>
-                    <p id="no-personnel-message" class="text-center text-slate-500 py-10 hidden">Aucun employé trouvé.</p>
-                    <div id="personnel-loader" class="text-center text-slate-500 py-10">
-                        <i class="ph-bold ph-circle-notch text-4xl animate-spin text-blue-500"></i>
-                        <p>Chargement du personnel...</p>
-                    </div>
+                    </form>
                 </div>
             </div>
 
-            <div id="scan-notification-toast" class="hidden fixed bottom-5 right-5 bg-white p-4 rounded-lg shadow-xl z-[100] border-l-4 w-full max-w-sm transition-transform duration-500 translate-x-[120%]"></div>
         </div>
     </div>
+    
+    <!-- Kiosk View -->
+    <div id="kiosk-view" class="fixed inset-0 bg-slate-900 flex-col items-center justify-center p-4 hidden z-[100]">
+        <button id="reset-kiosk-button" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"><i class="ph-bold ph-gear text-3xl"></i></button>
+        <div id="kiosk-reader" class="w-full max-w-lg md:w-96 md:h-96 bg-slate-800 rounded-lg overflow-hidden relative shadow-2xl">
+            <div class="absolute inset-0 border-4 border-dashed border-slate-500 rounded-lg m-4"></div>
+        </div>
+        <div id="kiosk-message" class="mt-8 text-center text-white h-24">
+            <p class="text-3xl font-bold"></p>
+            <p class="text-lg"></p>
+        </div>
+        <button id="close-kiosk-button" class="mt-8 bg-white text-slate-800 font-bold py-3 px-6 rounded-lg hover:bg-slate-200">Quitter le Kiosque</button>
+    </div>
 
+
+    <!-- Modals -->
     <div id="member-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-slate-50 rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h2 id="modal-title" class="text-2xl font-bold">Ajouter un Membre</h2>
-                <button id="close-modal-button" class="text-slate-500 hover:text-slate-800"><i class="ph-bold ph-x text-2xl"></i></button>
-            </div>
+            <div class="flex justify-between items-center mb-4"><h2 id="modal-title" class="text-2xl font-bold">Ajouter un Membre</h2><button id="close-modal-button" class="text-slate-500 hover:text-slate-800"><i class="ph-bold ph-x text-2xl"></i></button></div>
             <form id="member-form" class="space-y-4">
-                <input type="hidden" id="member-id">
-                <h3 class="font-semibold border-b pb-2">Informations de Base</h3>
+                <input type="hidden" id="member-id"><h3 class="font-semibold border-b pb-2">Informations de Base</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="text" id="member-firstname" placeholder="Prénom" class="w-full p-2 border rounded-md" required>
-                    <input type="text" id="member-lastname" placeholder="Nom" class="w-full p-2 border rounded-md" required>
-                    <input type="tel" id="member-phone" placeholder="Téléphone" class="w-full p-2 border rounded-md" required>
-                    <input type="email" id="member-email" placeholder="Email (optionnel)" class="w-full p-2 border rounded-md">
-                    <div class="md:col-span-2">
-                         <input type="url" id="member-photo" placeholder="URL de la photo (optionnel)" class="w-full p-2 border rounded-md">
-                    </div>
+                    <input type="text" id="member-firstname" placeholder="Prénom" class="w-full p-2 border rounded-md" required><input type="text" id="member-lastname" placeholder="Nom" class="w-full p-2 border rounded-md" required><input type="tel" id="member-phone" placeholder="Téléphone" class="w-full p-2 border rounded-md" required><input type="email" id="member-email" placeholder="Email (optionnel)" class="w-full p-2 border rounded-md">
+                    <div class="md:col-span-2"><input type="url" id="member-photo" placeholder="URL de la photo (optionnel)" class="w-full p-2 border rounded-md"></div>
                 </div>
                 <div id="new-member-fields">
                     <h3 class="font-semibold border-b pb-2 pt-4">Type d'Adhésion</h3>
-                    <div id="member-type-container" class="flex bg-slate-200 p-1 rounded-lg">
-                          <button type="button" id="type-subscription" class="member-type-btn flex-1 p-2 rounded-md font-semibold bg-white text-blue-600 shadow">Abonnement</button>
-                          <button type="button" id="type-session" class="member-type-btn flex-1 p-2 rounded-md font-semibold text-slate-600">Carnet de Séances</button>
-                    </div>
+                    <div id="member-type-container" class="flex bg-slate-200 p-1 rounded-lg"><button type="button" id="type-subscription" class="member-type-btn flex-1 p-2 rounded-md font-semibold bg-white text-blue-600 shadow">Abonnement</button><button type="button" id="type-session" class="member-type-btn flex-1 p-2 rounded-md font-semibold text-slate-600">Carnet de Séances</button></div>
                     <input type="hidden" id="member-type" value="subscription">
-                    <div id="subscription-fields">
-                        <label for="subscription-duration" class="font-medium">Durée (en mois)</label>
-                        <input type="number" id="subscription-duration" min="1" placeholder="Ex: 3" class="w-full mt-1 p-2 border rounded-md">
-                    </div>
-                    <div id="session-fields" class="hidden">
-                        <label for="session-count" class="font-medium">Nombre de séances</label>
-                        <input type="number" id="session-count" min="1" placeholder="Ex: 10" class="w-full mt-1 p-2 border rounded-md">
-                    </div>
-                     <div id="amount-field-new">
-                        <label for="member-amount" class="font-medium">Montant Payé (FCFA)</label>
-                        <input type="number" id="member-amount" min="0" placeholder="Ex: 40000" class="w-full mt-1 p-2 border rounded-md" required>
-                    </div>
+                    <div id="subscription-fields"><label for="subscription-duration" class="font-medium">Durée (en mois)</label><input type="number" id="subscription-duration" min="1" placeholder="Ex: 3" class="w-full mt-1 p-2 border rounded-md"></div>
+                    <div id="session-fields" class="hidden"><label for="session-count" class="font-medium">Nombre de séances</label><input type="number" id="session-count" min="1" placeholder="Ex: 10" class="w-full mt-1 p-2 border rounded-md"></div>
+                    <div id="amount-field-new"><label for="member-amount" class="font-medium">Montant Payé (FCFA)</label><input type="number" id="member-amount" min="0" placeholder="Ex: 40000" class="w-full mt-1 p-2 border rounded-md" required></div>
                 </div>
                 <h3 class="font-semibold border-b pb-2 pt-4">Informations d'Urgence</h3>
-                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="text" id="member-emergency-name" placeholder="Contact d'urgence (nom)" class="w-full p-2 border rounded-md">
-                    <input type="tel" id="member-emergency-phone" placeholder="Contact d'urgence (tél)" class="w-full p-2 border rounded-md">
-                </div>
-                <textarea id="member-medical" placeholder="Antécédents médicaux, allergies..." class="w-full p-2 border rounded-md h-20"></textarea>
-                 <textarea id="member-notes" placeholder="Notes additionnelles..." class="w-full p-2 border rounded-md h-20"></textarea>
-                <div class="flex gap-4 pt-4 border-t">
-                    <button type="button" id="cancel-form-button" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Annuler</button>
-                    <button type="submit" id="submit-form-button" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors flex justify-center items-center">
-                        <span class="btn-text">Enregistrer</span>
-                        <i class="ph-bold ph-circle-notch spinner text-2xl hidden"></i>
-                    </button>
-                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="member-emergency-name" placeholder="Contact d'urgence (nom)" class="w-full p-2 border rounded-md"><input type="tel" id="member-emergency-phone" placeholder="Contact d'urgence (tél)" class="w-full p-2 border rounded-md"></div>
+                <textarea id="member-medical" placeholder="Antécédents médicaux, allergies..." class="w-full p-2 border rounded-md h-20"></textarea><textarea id="member-notes" placeholder="Notes additionnelles..." class="w-full p-2 border rounded-md h-20"></textarea>
+                <div class="flex gap-4 pt-4 border-t"><button type="button" id="cancel-form-button" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Annuler</button><button type="submit" id="submit-form-button" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors flex justify-center items-center"><span class="btn-text">Enregistrer</span><i class="ph-bold ph-circle-notch spinner text-2xl hidden"></i></button></div>
             </form>
         </div>
     </div>
-
     <div id="personnel-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-slate-50 rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h2 id="personnel-modal-title" class="text-2xl font-bold">Ajouter un Employé</h2>
-                <button id="close-personnel-modal-button" class="text-slate-500 hover:text-slate-800"><i class="ph-bold ph-x text-2xl"></i></button>
-            </div>
+            <div class="flex justify-between items-center mb-4"><h2 id="personnel-modal-title" class="text-2xl font-bold">Ajouter un Employé</h2><button id="close-personnel-modal-button" class="text-slate-500 hover:text-slate-800"><i class="ph-bold ph-x text-2xl"></i></button></div>
             <form id="personnel-form" class="space-y-4">
                 <input type="hidden" id="personnel-id">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="text" id="personnel-firstname" placeholder="Prénom" class="w-full p-2 border rounded-md" required>
-                    <input type="text" id="personnel-lastname" placeholder="Nom" class="w-full p-2 border rounded-md" required>
-                    <input type="tel" id="personnel-phone" placeholder="Contact" class="w-full p-2 border rounded-md" required>
-                    <input type="text" id="personnel-address" placeholder="Lieu de résidence" class="w-full p-2 border rounded-md">
-                    <input type="text" id="personnel-role" placeholder="Rôle / Activité (ex: Coach)" class="w-full p-2 border rounded-md">
-                    <input type="text" id="personnel-id-card" placeholder="N° pièce d'identité" class="w-full p-2 border rounded-md">
-                     <div>
-                        <label for="personnel-hire-date" class="text-sm font-medium">Date d'embauche</label>
-                        <input type="date" id="personnel-hire-date" class="w-full p-2 border rounded-md" required>
-                    </div>
-                    <input type="text" id="personnel-contract-type" placeholder="Type de contrat (CDI, CDD...)" class="w-full p-2 border rounded-md">
-                    <input type="number" id="personnel-salary" placeholder="Salaire (FCFA)" class="w-full p-2 border rounded-md" min="0">
-                    <div id="personnel-status-container" class="hidden md:col-span-2">
-                        <label for="personnel-status" class="text-sm font-medium">Statut</label>
-                         <select id="personnel-status" class="w-full p-2 border rounded-md">
-                             <option value="Actif">Actif</option>
-                             <option value="Contrat terminé">Contrat terminé</option>
-                         </select>
-                    </div>
+                    <input type="text" id="personnel-firstname" placeholder="Prénom" class="w-full p-2 border rounded-md" required><input type="text" id="personnel-lastname" placeholder="Nom" class="w-full p-2 border rounded-md" required><input type="tel" id="personnel-phone" placeholder="Contact" class="w-full p-2 border rounded-md" required><input type="text" id="personnel-address" placeholder="Lieu de résidence" class="w-full p-2 border rounded-md"><input type="text" id="personnel-role" placeholder="Rôle / Activité (ex: Coach)" class="w-full p-2 border rounded-md"><input type="text" id="personnel-id-card" placeholder="N° pièce d'identité" class="w-full p-2 border rounded-md">
+                    <div><label for="personnel-hire-date" class="text-sm font-medium">Date d'embauche</label><input type="date" id="personnel-hire-date" class="w-full p-2 border rounded-md" required></div>
+                    <input type="text" id="personnel-contract-type" placeholder="Type de contrat (CDI, CDD...)" class="w-full p-2 border rounded-md"><input type="number" id="personnel-salary" placeholder="Salaire (FCFA)" class="w-full p-2 border rounded-md" min="0">
+                    <div id="personnel-status-container" class="hidden md:col-span-2"><label for="personnel-status" class="text-sm font-medium">Statut</label><select id="personnel-status" class="w-full p-2 border rounded-md"><option value="Actif">Actif</option><option value="Contrat terminé">Contrat terminé</option></select></div>
                 </div>
-                <div class="flex gap-4 pt-4 border-t">
-                    <button type="button" id="cancel-personnel-form-button" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Annuler</button>
-                    <button type="submit" id="submit-personnel-form-button" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors flex justify-center items-center">
-                        <span class="btn-text">Enregistrer</span>
-                        <i class="ph-bold ph-circle-notch spinner text-2xl hidden"></i>
-                    </button>
-                </div>
+                <div class="flex gap-4 pt-4 border-t"><button type="button" id="cancel-personnel-form-button" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Annuler</button><button type="submit" id="submit-personnel-form-button" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors flex justify-center items-center"><span class="btn-text">Enregistrer</span><i class="ph-bold ph-circle-notch spinner text-2xl hidden"></i></button></div>
             </form>
         </div>
     </div>
-
     <div id="view-member-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-50">
-         <div class="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h2 id="view-modal-title" class="text-2xl font-bold truncate">Détails du Membre</h2>
-                <button id="close-view-modal-button" class="text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-full p-1 transition-colors"><i class="ph-bold ph-x text-2xl"></i></button>
-            </div>
+        <div class="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4"><h2 id="view-modal-title" class="text-2xl font-bold truncate">Détails du Membre</h2><button id="close-view-modal-button" class="text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-full p-1 transition-colors"><i class="ph-bold ph-x text-2xl"></i></button></div>
             <div id="view-member-content" class="space-y-4"></div>
         </div>
     </div>
-
     <div id="personnel-sessions-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-[60]">
         <div class="bg-white rounded-2xl p-6 w-full max-w-xl max-h-[90vh] flex flex-col">
-           <div class="flex justify-between items-center mb-4">
-               <h2 id="personnel-sessions-title" class="text-2xl font-bold">Historique de Présence</h2>
-               <button id="close-personnel-sessions-modal" class="text-slate-500 hover:text-slate-800"><i class="ph-bold ph-x text-2xl"></i></button>
-           </div>
-           <div id="personnel-sessions-list" class="space-y-2 flex-1 overflow-y-auto"></div>
-           <div class="flex justify-end pt-4 border-t mt-4">
-                <button id="close-personnel-sessions-bottom-btn" class="bg-slate-200 font-bold py-2 px-6 rounded-lg hover:bg-slate-300 transition-colors">Fermer</button>
-           </div>
+            <div class="flex justify-between items-center mb-4"><h2 id="personnel-sessions-title" class="text-2xl font-bold">Historique de Présence</h2><button id="close-personnel-sessions-modal" class="text-slate-500 hover:text-slate-800"><i class="ph-bold ph-x text-2xl"></i></button></div>
+            <div id="personnel-sessions-list" class="space-y-2 flex-1 overflow-y-auto"></div>
+            <div class="flex justify-end pt-4 border-t mt-4"><button id="close-personnel-sessions-bottom-btn" class="bg-slate-200 font-bold py-2 px-6 rounded-lg hover:bg-slate-300 transition-colors">Fermer</button></div>
         </div>
     </div>
-
     <div id="charge-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-slate-50 rounded-2xl p-6 w-full max-w-md">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold">Ajouter une Charge</h2>
-                <button id="close-charge-modal-button" class="text-slate-500 hover:text-slate-800"><i class="ph-bold ph-x text-2xl"></i></button>
-            </div>
+            <div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-bold">Ajouter une Charge</h2><button id="close-charge-modal-button" class="text-slate-500 hover:text-slate-800"><i class="ph-bold ph-x text-2xl"></i></button></div>
             <form id="charge-form" class="space-y-4">
-                <div>
-                    <label for="charge-description" class="font-medium">Description</label>
-                    <input type="text" id="charge-description" placeholder="Ex: Facture d'électricité" class="w-full mt-1 p-2 border rounded-md" required>
-                </div>
-                <div>
-                    <label for="charge-amount" class="font-medium">Montant (FCFA)</label>
-                    <input type="number" id="charge-amount" min="0" placeholder="Ex: 50000" class="w-full mt-1 p-2 border rounded-md" required>
-                </div>
-                 <div class="flex gap-4 pt-4 border-t">
-                    <button type="button" id="cancel-charge-button" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Annuler</button>
-                    <button type="submit" id="submit-charge-button" class="flex-1 bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition-colors flex justify-center items-center">
-                        <span class="btn-text">Enregistrer Charge</span>
-                        <i class="ph-bold ph-circle-notch spinner text-2xl hidden"></i>
-                    </button>
-                </div>
+                <div><label for="charge-description" class="font-medium">Description</label><input type="text" id="charge-description" placeholder="Ex: Facture d'électricité" class="w-full mt-1 p-2 border rounded-md" required></div>
+                <div><label for="charge-amount" class="font-medium">Montant (FCFA)</label><input type="number" id="charge-amount" min="0" placeholder="Ex: 50000" class="w-full mt-1 p-2 border rounded-md" required></div>
+                <div class="flex gap-4 pt-4 border-t"><button type="button" id="cancel-charge-button" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Annuler</button><button type="submit" id="submit-charge-button" class="flex-1 bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition-colors flex justify-center items-center"><span class="btn-text">Enregistrer Charge</span><i class="ph-bold ph-circle-notch spinner text-2xl hidden"></i></button></div>
             </form>
         </div>
     </div>
-
-     <div id="pin-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-[60]">
-        <div class="bg-white rounded-2xl p-8 w-full max-w-sm">
-            <h2 class="text-xl font-bold text-center mb-2">Action Protégée</h2>
-            <p class="text-center text-slate-600 mb-6">Veuillez entrer le code superviseur pour continuer.</p>
-            <input type="password" id="pin-input" inputmode="numeric" class="w-full text-center text-2xl tracking-[.5em] p-3 border rounded-lg mb-4" maxlength="4">
-             <div class="grid grid-cols-2 gap-4">
-                <button id="pin-cancel" class="w-full bg-slate-200 p-3 rounded-lg font-bold">Annuler</button>
-                <button id="pin-confirm" class="w-full bg-blue-600 text-white p-3 rounded-lg font-bold">Confirmer</button>
-            </div>
-             <p id="pin-error" class="text-red-500 text-sm text-center mt-4"></p>
-        </div>
+    <div id="pin-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-[60]">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-sm"><h2 class="text-xl font-bold text-center mb-2">Action Protégée</h2><p class="text-center text-slate-600 mb-6">Veuillez entrer le code superviseur pour continuer.</p><input type="password" id="pin-input" inputmode="numeric" class="w-full text-center text-2xl tracking-[.5em] p-3 border rounded-lg mb-4" maxlength="4"><div class="grid grid-cols-2 gap-4"><button id="pin-cancel" class="w-full bg-slate-200 p-3 rounded-lg font-bold">Annuler</button><button id="pin-confirm" class="w-full bg-blue-600 text-white p-3 rounded-lg font-bold">Confirmer</button></div><p id="pin-error" class="text-red-500 text-sm text-center mt-4"></p></div>
     </div>
-
     <div id="qr-scanner-modal" class="fixed inset-0 bg-black bg-opacity-90 flex flex-col items-center justify-center p-4 hidden z-50">
         <h2 id="qr-scanner-title" class="text-2xl font-bold text-white mb-4">Scannez le code</h2>
         <div id="qr-reader" class="w-full max-w-md bg-slate-700 rounded-lg overflow-hidden"></div>
         <button id="close-scanner-button" class="mt-8 bg-white text-slate-800 font-bold py-3 px-6 rounded-lg">Fermer</button>
     </div>
-
     <div id="card-modal" class="fixed inset-0 bg-black bg-opacity-60 flex flex-col items-center justify-center p-4 hidden z-[70]">
-        <div class="bg-white p-6 rounded-2xl">
-            <div id="card-display-area" class="mb-6 p-4 bg-white"></div>
-            <div class="flex gap-4 modal-buttons">
-                <button id="close-card-modal-btn" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Fermer</button>
-                <button id="download-card-btn" class="flex-1 bg-green-600 text-white p-3 rounded-lg font-bold hover:bg-green-700 transition-colors flex items-center justify-center"><i class="ph ph-download-simple mr-2"></i>Télécharger</button>
-                <button id="print-card-btn-action" class="flex-1 bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition-colors flex items-center justify-center"><i class="ph ph-printer mr-2"></i>Imprimer</button>
-            </div>
-        </div>
+        <div class="bg-white p-6 rounded-2xl"><div id="card-display-area" class="mb-6 p-4 bg-white"></div><div class="flex gap-4 modal-buttons"><button id="close-card-modal-btn" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Fermer</button><button id="download-card-btn" class="flex-1 bg-green-600 text-white p-3 rounded-lg font-bold hover:bg-green-700 transition-colors flex items-center justify-center"><i class="ph ph-download-simple mr-2"></i>Télécharger</button><button id="print-card-btn-action" class="flex-1 bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition-colors flex items-center justify-center"><i class="ph ph-printer mr-2"></i>Imprimer</button></div></div>
     </div>
-
     <div id="alert-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-[80]">
-        <div class="bg-white rounded-2xl p-8 w-full max-w-sm text-center">
-            <div id="alert-icon" class="mx-auto mb-4"></div>
-            <p id="alert-message" class="text-lg text-slate-700 mb-6"></p>
-            <button id="alert-ok" class="bg-blue-600 text-white font-bold py-2 px-8 rounded-lg hover:bg-blue-700 transition-colors">OK</button>
-        </div>
+        <div class="bg-white rounded-2xl p-8 w-full max-w-sm text-center"><div id="alert-icon" class="mx-auto mb-4"></div><p id="alert-message" class="text-lg text-slate-700 mb-6"></p><button id="alert-ok" class="bg-blue-600 text-white font-bold py-2 px-8 rounded-lg hover:bg-blue-700 transition-colors">OK</button></div>
     </div>
     <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-[80]">
-        <div class="bg-white rounded-2xl p-8 w-full max-w-sm text-center">
-            <i class="ph-bold ph-question text-5xl text-amber-500 mx-auto mb-4"></i>
-            <p id="confirm-message" class="text-lg text-slate-700 mb-8"></p>
-            <div class="flex gap-4">
-                <button id="confirm-cancel" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Annuler</button>
-                <button id="confirm-ok" class="flex-1 bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition-colors">Confirmer</button>
-            </div>
-        </div>
+        <div class="bg-white rounded-2xl p-8 w-full max-w-sm text-center"><i class="ph-bold ph-question text-5xl text-amber-500 mx-auto mb-4"></i><p id="confirm-message" class="text-lg text-slate-700 mb-8"></p><div class="flex gap-4"><button id="confirm-cancel" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Annuler</button><button id="confirm-ok" class="flex-1 bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition-colors">Confirmer</button></div></div>
     </div>
     <div id="prompt-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-[80]">
-        <div class="bg-white rounded-2xl p-8 w-full max-w-sm">
-            <p id="prompt-message" class="font-semibold text-slate-700 mb-4"></p>
-            <input type="text" id="prompt-input" class="w-full p-3 border rounded-lg mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <div class="flex gap-4">
-                <button id="prompt-cancel" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Annuler</button>
-                <button id="prompt-ok" class="flex-1 bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition-colors">Valider</button>
-            </div>
-        </div>
+        <div class="bg-white rounded-2xl p-8 w-full max-w-sm"><p id="prompt-message" class="font-semibold text-slate-700 mb-4"></p><input type="text" id="prompt-input" class="w-full p-3 border rounded-lg mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500"><div class="flex gap-4"><button id="prompt-cancel" class="flex-1 bg-slate-200 p-3 rounded-lg font-bold hover:bg-slate-300 transition-colors">Annuler</button><button id="prompt-ok" class="flex-1 bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition-colors">Valider</button></div></div>
     </div>
 
+
+    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, where, getDocs, writeBatch, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // --- CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyCvWaZP0moEZGNFfSRltvipPmU7-hbqrCI",
             authDomain: "mr-sylla.firebaseapp.com",
@@ -515,20 +342,20 @@
         };
         const SUPERVISOR_PIN = "5008";
         
-        const loginView = document.getElementById('login-view'), mainView = document.getElementById('main-view'), memberModal = document.getElementById('member-modal'), viewMemberModal = document.getElementById('view-member-modal'), pinModal = document.getElementById('pin-modal'), qrScannerModal = document.getElementById('qr-scanner-modal'), cardModal = document.getElementById('card-modal'), alertModal = document.getElementById('alert-modal'), confirmModal = document.getElementById('confirm-modal'), promptModal = document.getElementById('prompt-modal'), chargeModal = document.getElementById('charge-modal'), consultationLoginForm = document.getElementById('consultation-login-form'), managerLoginForm = document.getElementById('manager-login-form'), kioskLoginForm = document.getElementById('kiosk-login-form'), sessionsSection = document.getElementById('sessions-section'), personnelModal = document.getElementById('personnel-modal'), personnelSection = document.getElementById('personnel-section'), personnelSessionsModal = document.getElementById('personnel-sessions-modal');
+        // --- DOM ELEMENTS & STATE ---
+        const loginView = document.getElementById('login-view'), mainView = document.getElementById('main-view'), memberModal = document.getElementById('member-modal'), viewMemberModal = document.getElementById('view-member-modal'), pinModal = document.getElementById('pin-modal'), qrScannerModal = document.getElementById('qr-scanner-modal'), cardModal = document.getElementById('card-modal'), alertModal = document.getElementById('alert-modal'), confirmModal = document.getElementById('confirm-modal'), promptModal = document.getElementById('prompt-modal'), chargeModal = document.getElementById('charge-modal'), consultationLoginForm = document.getElementById('consultation-login-form'), managerLoginForm = document.getElementById('manager-login-form'), sessionsSection = document.getElementById('sessions-section'), personnelModal = document.getElementById('personnel-modal'), personnelSection = document.getElementById('personnel-section'), personnelSessionsModal = document.getElementById('personnel-sessions-modal'), kioskView = document.getElementById('kiosk-view'), settingsSection = document.getElementById('settings-section');
         
         let db, auth;
-        let currentUserId = null, isReadOnlyMode = false;
+        let currentUserId = null, isReadOnlyMode = false, kioskGymId = null;
         let allMembers = [], allPayments = [], allCharges = [], allSessions = [], allPersonnel = [], allPersonnelSessions = [];
         let pinResolve, alertResolve, confirmResolve, promptResolve;
         let currentFilter = 'all';
-        let dangerZoneClickCount = 0;
-        let lastClickTimestamp = 0;
-        let unsubscribeMembers = () => {}, unsubscribePayments = () => {}, unsubscribeCharges = () => {}, unsubscribeSessions = () => {}, unsubscribePersonnel = () => {}, unsubscribePersonnelSessions = () => {};
-        let unsubscribeScanNotifications = () => {};
+        let dangerZoneClickCount = 0, lastClickTimestamp = 0;
+        let unsubscribeMembers, unsubscribePayments, unsubscribeCharges, unsubscribeSessions, unsubscribePersonnel, unsubscribePersonnelSessions, unsubscribeSettings, unsubscribeLiveStatus;
+        unsubscribeMembers = unsubscribePayments = unsubscribeCharges = unsubscribeSessions = unsubscribePersonnel = unsubscribePersonnelSessions = unsubscribeSettings = unsubscribeLiveStatus = () => {};
+        let kioskScanCooldown = false;
 
-        // --- ENTIRE SCRIPT LOGIC ---
-        // The full JavaScript code is placed here, including all functions.
+        // --- FULL SCRIPT LOGIC ---
 
         function setupEventListeners() {
             document.getElementById('login-button').addEventListener('click', handleLogin);
@@ -556,19 +383,19 @@
             document.getElementById('close-view-modal-button').addEventListener('click', () => viewMemberModal.classList.add('hidden'));
             document.getElementById('pin-cancel').addEventListener('click', () => { pinModal.classList.add('hidden'); if (pinResolve) pinResolve(false); });
             document.getElementById('pin-confirm').addEventListener('click', () => {
-                 if(document.getElementById('pin-input').value === SUPERVISOR_PIN) {
-                     pinModal.classList.add('hidden');
-                     if (pinResolve) pinResolve(true);
-                 } else {
-                     document.getElementById('pin-error').textContent = "Code incorrect.";
-                 }
+                if(document.getElementById('pin-input').value === SUPERVISOR_PIN) {
+                    pinModal.classList.add('hidden');
+                    if (pinResolve) pinResolve(true);
+                } else {
+                    document.getElementById('pin-error').textContent = "Code incorrect.";
+                }
             });
             document.getElementById('alert-ok').addEventListener('click', () => { if (alertResolve) alertResolve(); });
             document.getElementById('confirm-ok').addEventListener('click', () => { if (confirmResolve) confirmResolve(true); });
             document.getElementById('confirm-cancel').addEventListener('click', () => { if (confirmResolve) confirmResolve(false); });
             document.getElementById('prompt-ok').addEventListener('click', () => { if (promptResolve) promptResolve(document.getElementById('prompt-input').value); });
             document.getElementById('prompt-cancel').addEventListener('click', () => { if (promptResolve) promptResolve(null); });
-            document.getElementById('scan-qr-button').addEventListener('click', startQrScanner);
+            document.getElementById('scan-qr-button').addEventListener('click', () => startQrScanner(false));
             document.getElementById('close-scanner-button').addEventListener('click', stopQrScanner);
             document.getElementById('close-card-modal-btn').addEventListener('click', () => cardModal.classList.add('hidden'));
             document.getElementById('download-report-button').addEventListener('click', downloadReport);
@@ -588,58 +415,65 @@
             document.getElementById('close-charge-modal-button').addEventListener('click', () => chargeModal.classList.add('hidden'));
             document.getElementById('cancel-charge-button').addEventListener('click', () => chargeModal.classList.add('hidden'));
             document.getElementById('charge-form').addEventListener('submit', handleChargeFormSubmit);
-
-            const managerTab = document.getElementById('manager-tab');
-            const consultationTab = document.getElementById('consultation-tab');
-            const kioskTab = document.getElementById('kiosk-tab');
-
-            managerTab.addEventListener('click', () => {
-                managerLoginForm.classList.remove('hidden');
-                consultationLoginForm.classList.add('hidden');
-                kioskLoginForm.classList.add('hidden');
-                managerTab.classList.add('border-blue-600', 'text-blue-600');
-                consultationTab.classList.remove('border-blue-600', 'text-blue-600');
-                kioskTab.classList.remove('border-blue-600', 'text-blue-600');
-            });
-            consultationTab.addEventListener('click', () => {
-                managerLoginForm.classList.add('hidden');
-                consultationLoginForm.classList.remove('hidden');
-                kioskLoginForm.classList.add('hidden');
-                consultationTab.classList.add('border-blue-600', 'text-blue-600');
-                managerTab.classList.remove('border-blue-600', 'text-blue-600');
-                kioskTab.classList.remove('border-blue-600', 'text-blue-600');
-            });
-            kioskTab.addEventListener('click', () => {
-                managerLoginForm.classList.add('hidden');
-                consultationLoginForm.classList.add('hidden');
-                kioskLoginForm.classList.remove('hidden');
-                kioskTab.classList.add('border-blue-600', 'text-blue-600');
-                managerTab.classList.remove('border-blue-600', 'text-blue-600');
-                consultationTab.classList.remove('border-blue-600', 'text-blue-600');
-            });
-
             document.getElementById('consultation-login-button').addEventListener('click', handleConsultationLogin);
-            document.getElementById('launch-kiosk-button').addEventListener('click', handleLaunchKiosk); 
-            
             document.getElementById('session-date-filter').addEventListener('change', renderSessionsHistory);
             document.getElementById('add-personnel-button').addEventListener('click', showAddPersonnelModal);
             document.getElementById('close-personnel-modal-button').addEventListener('click', () => personnelModal.classList.add('hidden'));
             document.getElementById('cancel-personnel-form-button').addEventListener('click', () => personnelModal.classList.add('hidden'));
             document.getElementById('personnel-form').addEventListener('submit', handlePersonnelFormSubmit);
             document.getElementById('personnel-list-container').addEventListener('click', (e) => {
-                const editButton = e.target.closest('.edit-personnel-btn');
-                if (editButton) showEditPersonnelModal(editButton.dataset.id);
-                const deleteButton = e.target.closest('.delete-personnel-btn');
-                if (deleteButton) deletePersonnel(deleteButton.dataset.id);
-                const endContractButton = e.target.closest('.end-contract-btn');
-                if (endContractButton) endContract(endContractButton.dataset.id);
-                const qrButton = e.target.closest('.qr-personnel-btn');
-                if (qrButton) showPersonnelCard(qrButton.dataset.id);
-                const historyButton = e.target.closest('.history-personnel-btn');
-                if (historyButton) showPersonnelSessionsHistoryModal(historyButton.dataset.id);
+                const editButton = e.target.closest('.edit-personnel-btn'); if (editButton) showEditPersonnelModal(editButton.dataset.id);
+                const deleteButton = e.target.closest('.delete-personnel-btn'); if (deleteButton) deletePersonnel(deleteButton.dataset.id);
+                const endContractButton = e.target.closest('.end-contract-btn'); if (endContractButton) endContract(endContractButton.dataset.id);
+                const qrButton = e.target.closest('.qr-personnel-btn'); if (qrButton) showPersonnelCard(qrButton.dataset.id);
+                const historyButton = e.target.closest('.history-personnel-btn'); if (historyButton) showPersonnelSessionsHistoryModal(historyButton.dataset.id);
             });
             document.getElementById('close-personnel-sessions-modal').addEventListener('click', () => personnelSessionsModal.classList.add('hidden'));
             document.getElementById('close-personnel-sessions-bottom-btn').addEventListener('click', () => personnelSessionsModal.classList.add('hidden'));
+
+            // New event listeners
+            document.getElementById('manager-tab').addEventListener('click', () => switchLoginTab('manager'));
+            document.getElementById('consultation-tab').addEventListener('click', () => switchLoginTab('consultation'));
+            document.getElementById('kiosk-tab').addEventListener('click', handleKioskTabClick);
+            document.getElementById('close-kiosk-button').addEventListener('click', stopKioskMode);
+            document.getElementById('reset-kiosk-button').addEventListener('click', resetKioskConfiguration);
+            document.getElementById('settings-form').addEventListener('submit', handleSettingsSave);
+        }
+
+        function switchLoginTab(tab) {
+            const tabs = {
+                manager: { btn: 'manager-tab', form: 'manager-login-form' },
+                consultation: { btn: 'consultation-tab', form: 'consultation-login-form' },
+            };
+            
+            document.getElementById('kiosk-tab').classList.remove('border-blue-600', 'text-blue-600');
+            document.getElementById('kiosk-tab').classList.add('text-slate-500');
+
+            Object.values(tabs).forEach(t => {
+                const btn = document.getElementById(t.btn);
+                if(btn) {
+                    btn.classList.remove('border-blue-600', 'text-blue-600');
+                    btn.classList.add('text-slate-500');
+                }
+                if(t.form) document.getElementById(t.form)?.classList.add('hidden');
+            });
+            
+            const selected = tabs[tab];
+            if(selected) {
+                 document.getElementById(selected.btn).classList.add('border-blue-600', 'text-blue-600');
+                 if(selected.form) document.getElementById(selected.form).classList.remove('hidden');
+            }
+        }
+
+        function handleKioskTabClick() {
+            document.getElementById('manager-tab').classList.remove('border-blue-600', 'text-blue-600');
+            document.getElementById('manager-tab').classList.add('text-slate-500');
+            document.getElementById('consultation-tab').classList.remove('border-blue-600', 'text-blue-600');
+            document.getElementById('consultation-tab').classList.add('text-slate-500');
+            document.getElementById('kiosk-tab').classList.add('border-blue-600', 'text-blue-600');
+            document.getElementById('manager-login-form').classList.add('hidden');
+            document.getElementById('consultation-login-form').classList.add('hidden');
+            startKioskMode();
         }
 
         function startApp() {
@@ -647,21 +481,9 @@
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
-                
-                const urlParams = new URLSearchParams(window.location.search);
-                const mode = urlParams.get('mode');
-                const gymId = urlParams.get('gymId');
-
-                if (mode === 'kiosk' && gymId) {
-                    currentUserId = gymId;
-                    document.getElementById('app').classList.add('hidden');
-                    document.getElementById('kiosk-view').classList.remove('hidden');
-                    startKioskScanner(gymId);
-                } else {
-                    setupEventListeners();
-                    setupAuthObserver();
-                    document.getElementById('session-date-filter').valueAsDate = new Date();
-                }
+                setupEventListeners();
+                setupAuthObserver();
+                document.getElementById('session-date-filter').valueAsDate = new Date();
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
                 document.body.innerHTML = `<div class="p-8 bg-red-100 text-red-800 rounded-lg m-4"><strong>Erreur de Configuration Firebase.</strong><br>Veuillez vérifier votre objet de configuration Firebase.</div>`;
@@ -698,7 +520,8 @@
             listenToSessions();
             listenToPersonnel();
             listenToPersonnelSessions();
-            listenToScanNotifications();
+            listenToSettings();
+            if(!isReadOnlyMode) listenToLiveStatus(); // Manager listens to live scans
         }
 
         function unsubscribeData() {
@@ -708,7 +531,51 @@
             unsubscribeSessions();
             unsubscribePersonnel();
             unsubscribePersonnelSessions();
-            unsubscribeScanNotifications();
+            unsubscribeSettings();
+            unsubscribeLiveStatus();
+        }
+
+        function listenToSettings() {
+            unsubscribeSettings();
+            const settingsRef = doc(db, "gyms", currentUserId, "config", "main");
+            unsubscribeSettings = onSnapshot(settingsRef, (docSnap) => {
+                const settings = docSnap.exists() ? docSnap.data() : {};
+                const gymName = settings?.gymName || "FIT TRACK";
+                document.getElementById('app-title-login').textContent = gymName;
+                document.getElementById('app-title-main').textContent = gymName;
+                document.title = `${gymName} - Gestion de Salle de Sport`;
+                if(document.getElementById('gym-name-input')) {
+                    document.getElementById('gym-name-input').value = settings?.gymName || '';
+                }
+            }, (error) => console.error("Error listening to settings:", error));
+        }
+
+        function listenToLiveStatus() {
+            unsubscribeLiveStatus();
+            const statusRef = doc(db, "gyms", currentUserId, "status", "latestScan");
+            unsubscribeLiveStatus = onSnapshot(statusRef, (docSnap) => {
+                if(docSnap.exists()){
+                    const data = docSnap.data();
+                    const liveFeed = document.getElementById('live-scan-feed');
+                    const nameEl = document.getElementById('live-scan-name');
+                    const statusEl = document.getElementById('live-scan-status');
+
+                    nameEl.textContent = data.name;
+                    statusEl.textContent = data.status;
+
+                    if(data.type === 'success') statusEl.className = 'text-sm font-medium text-green-600';
+                    else if(data.type === 'error') statusEl.className = 'text-sm font-medium text-red-600';
+                    else statusEl.className = 'text-sm font-medium text-blue-600';
+
+                    liveFeed.classList.remove('opacity-0', '-translate-y-4');
+                    liveFeed.classList.add('opacity-100', 'translate-y-0');
+
+                    setTimeout(() => {
+                        liveFeed.classList.remove('opacity-100', 'translate-y-0');
+                        liveFeed.classList.add('opacity-0', '-translate-y-4');
+                    }, 5000);
+                }
+            }, (error) => console.error("Error listening to live status:", error));
         }
 
         function listenToPersonnel() {
@@ -744,9 +611,9 @@
             unsubscribePayments();
             const q = query(collection(db, "gyms", currentUserId, "payments"), orderBy("date_paiement", "desc"));
             unsubscribePayments = onSnapshot(q, (snapshot) => {
-                 allPayments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                 renderFinancialHistory();
-                 updateDashboard();
+                allPayments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderFinancialHistory();
+                updateDashboard();
             }, (error) => console.error("Error listening to payments:", error));
         }
 
@@ -782,7 +649,6 @@
         }
 
         function applyFilterAndRender() {
-            if(!document.getElementById('member-list-container')) return;
             const membersToRender = allMembers.filter(member => currentFilter === 'all' || getMemberStatus(member).key === currentFilter);
             renderMemberList(membersToRender);
         }
@@ -806,7 +672,6 @@
 
         function renderPersonnelList() {
             const container = document.getElementById('personnel-list-container');
-            if (!container) return;
             const noPersonnelMsg = document.getElementById('no-personnel-message');
             container.innerHTML = '';
             noPersonnelMsg.classList.toggle('hidden', allPersonnel.length > 0);
@@ -824,19 +689,11 @@
                             <p class="text-slate-500 text-sm font-medium">${p.role || 'Rôle non défini'}</p>
                             <p class="text-slate-500 text-sm">${p.phone || 'N/A'}</p>
                         </div>
-                        <div>
-                            <span class="text-xs font-semibold px-2 py-1 rounded-full ${statusColor}">${status}</span>
-                        </div>
+                        <div><span class="text-xs font-semibold px-2 py-1 rounded-full ${statusColor}">${status}</span></div>
                     </div>
                     <div class="mt-3 pt-3 border-t grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                         <div>
-                             <p class="font-semibold text-slate-500">Contrat</p>
-                             <p class="text-slate-700">${p.contractType || 'N/A'}</p>
-                         </div>
-                        <div>
-                            <p class="font-semibold text-slate-500">Salaire</p>
-                             <p class="text-slate-700">${p.salary ? formatter.format(p.salary) : 'N/A'}</p>
-                        </div>
+                        <div><p class="font-semibold text-slate-500">Contrat</p><p class="text-slate-700">${p.contractType || 'N/A'}</p></div>
+                        <div><p class="font-semibold text-slate-500">Salaire</p><p class="text-slate-700">${p.salary ? formatter.format(p.salary) : 'N/A'}</p></div>
                     </div>
                     <div class="mt-3 pt-3 border-t flex items-center justify-end gap-2 flex-wrap">
                         <button class="history-personnel-btn text-xs font-bold bg-gray-100 text-gray-800 hover:bg-gray-200 px-3 py-1.5 rounded-md" data-id="${p.id}">Pointage</button>
@@ -852,7 +709,6 @@
 
         function renderSessionsHistory() {
             const container = document.getElementById('sessions-history-list');
-            if(!container) return;
             const noSessionsMsg = document.getElementById('no-sessions-message');
             container.innerHTML = '';
             const filterDate = document.getElementById('session-date-filter').valueAsDate;
@@ -905,25 +761,26 @@
 
         function updateUIAccess() {
             const isManager = !isReadOnlyMode;
-            document.querySelectorAll('#add-member-button, #add-charge-button').forEach(el => el.style.display = isManager ? '' : 'none');
+            document.querySelectorAll('#add-member-button, #add-charge-button').forEach(el => el.style.display = isManager ? 'flex' : 'none');
             document.getElementById('gym-id-display').style.display = isManager ? 'inline-block' : 'none';
 
             if (isManager) {
                 document.querySelector('[data-view="dashboard"]').style.display = 'none';
                 document.querySelector('[data-view="personnel"]').style.display = 'none';
+                document.querySelector('[data-view="settings"]').style.display = 'none';
                 document.querySelector('[data-view="members"]').style.display = '';
                 document.querySelector('[data-view="finance"]').style.display = '';
                 document.querySelector('[data-view="sessions"]').style.display = '';
-                document.getElementById('scan-qr-button').style.display = '';
-                document.getElementById('danger-zone').style.display = 'none';
-            } else {
+                document.getElementById('scan-qr-button').style.display = 'flex';
+            } else { // isOwner
                 document.querySelector('[data-view="dashboard"]').style.display = '';
                 document.querySelector('[data-view="personnel"]').style.display = '';
+                document.querySelector('[data-view="settings"]').style.display = '';
                 document.querySelector('[data-view="members"]').style.display = 'none';
                 document.querySelector('[data-view="finance"]').style.display = 'none';
                 document.querySelector('[data-view="sessions"]').style.display = 'none';
                 document.getElementById('scan-qr-button').style.display = 'none';
-                document.getElementById('danger-zone').style.display = '';
+                document.getElementById('live-scan-feed').style.display = 'none';
             }
         }
 
@@ -952,7 +809,7 @@
             if (pin !== SUPERVISOR_PIN) return errorP.textContent = "Code PIN incorrect.";
 
             try {
-                await getDoc(doc(db, "gyms", gymId));
+                await getDoc(doc(db, "gyms", gymId)); // Check if gym ID is valid
                 isReadOnlyMode = true;
                 currentUserId = gymId;
                 document.getElementById('user-email').textContent = `Accès Propriétaire (ID: ${gymId.substring(0,6)}...)`;
@@ -967,25 +824,13 @@
             }
         }
         
-        function handleLaunchKiosk() {
-            const gymId = document.getElementById('kiosk-gym-id-input').value.trim();
-            const errorP = document.getElementById('kiosk-login-error');
-            errorP.textContent = '';
-
-            if (!gymId) {
-                errorP.textContent = "Veuillez entrer un identifiant de salle.";
-                return;
-            }
-
-            currentUserId = gymId;
-            document.getElementById('app').classList.add('hidden');
-            document.getElementById('kiosk-view').classList.remove('hidden');
-            startKioskScanner(gymId);
-        }
-        
         async function handleLogout() {
             if (isReadOnlyMode) {
-                window.location.reload();
+                isReadOnlyMode = false, currentUserId = null;
+                mainView.classList.add('hidden');
+                loginView.classList.remove('hidden');
+                unsubscribeData();
+                resetUI();
             } else {
                 try { await signOut(auth); } catch (error) { console.error("Sign out failed:", error); }
             }
@@ -1013,7 +858,7 @@
                 } else {
                     const memberType = document.getElementById('member-type').value;
                     memberData.memberType = memberType;
-                    memberData.status = 'actif';
+                    memberData.status = 'actif'; // Default status for new members
                     if (memberType === 'subscription') {
                         const duration = parseInt(document.getElementById('subscription-duration').value, 10);
                         if (isNaN(duration) || duration <= 0) throw new Error("Durée d'abonnement invalide.");
@@ -1041,7 +886,7 @@
                 submitButton.disabled = false;
             }
         }
-        
+
         async function handlePersonnelFormSubmit(e) {
             e.preventDefault();
             const submitButton = document.getElementById('submit-personnel-form-button');
@@ -1114,7 +959,7 @@
                 }
             }
         }
-        
+
         async function endContract(id) {
              const staff = allPersonnel.find(p => p.id === id);
              if (!staff) return;
@@ -1152,24 +997,24 @@
         }
 
         async function reactivateSubscription(id, member) {
-             if (await confirmWithPin() && await showConfirm('Voulez-vous réactiver cet abonnement ?')) {
-                 const remainingDays = member.remainingDaysOnSuspend || 0;
-                 const newEndDate = new Date();
-                 newEndDate.setDate(newEndDate.getDate() + remainingDays);
-                 
-                 try {
-                     await updateDoc(doc(db, "gyms", currentUserId, "members", id), {
-                         status: 'actif',
-                         date_fin_abonnement: newEndDate,
-                         remainingDaysOnSuspend: 0
-                     });
-                     await showAlert('Abonnement réactivé.\nNouvelle date de fin : ' + newEndDate.toLocaleDateString('fr-FR'), 'success');
-                     showViewMemberModal(id);
-                 } catch (error) {
-                     console.error("Error reactivating subscription:", error);
-                     await showAlert('Erreur lors de la réactivation.', 'error');
-                 }
-             }
+              if (await confirmWithPin() && await showConfirm('Voulez-vous réactiver cet abonnement ?')) {
+                  const remainingDays = member.remainingDaysOnSuspend || 0;
+                  const newEndDate = new Date();
+                  newEndDate.setDate(newEndDate.getDate() + remainingDays);
+                  
+                  try {
+                      await updateDoc(doc(db, "gyms", currentUserId, "members", id), {
+                          status: 'actif',
+                          date_fin_abonnement: newEndDate,
+                          remainingDaysOnSuspend: 0
+                      });
+                      await showAlert('Abonnement réactivé.\nNouvelle date de fin : ' + newEndDate.toLocaleDateString('fr-FR'), 'success');
+                      showViewMemberModal(id);
+                  } catch (error) {
+                      console.error("Error reactivating subscription:", error);
+                      await showAlert('Erreur lors de la réactivation.', 'error');
+                  }
+              }
         }
 
         async function renewSubscription(memberId, member) {
@@ -1208,7 +1053,7 @@
             if (!amount || isNaN(price) || price < 0) return;
 
             const newSessionCount = (member.seances_restantes || 0) + count;
-             try {
+              try {
                 await updateDoc(doc(db, "gyms", currentUserId, "members", memberId), { seances_restantes: newSessionCount });
                 await logPayment(memberId, `${member.firstname} ${member.lastname}`, price, `Achat de ${count} séances`);
                 await showAlert('Séances ajoutées !', 'success');
@@ -1225,14 +1070,14 @@
             if(currentSessions <= 0) return showAlert("Le solde de séances est déjà à zéro.", 'info');
             
             if(await showConfirm(`Voulez-vous décompter 1 séance ? Solde actuel : ${currentSessions}`)){
-                 try {
-                    await updateDoc(doc(db, "gyms", currentUserId, "members", memberId), { seances_restantes: currentSessions - 1 });
-                    await showAlert('Séance décomptée !', 'success');
-                    showViewMemberModal(memberId);
-                } catch (error) {
-                    console.error("Error deducting session: ", error);
-                    await showAlert("Erreur lors du décompte.", 'error');
-                }
+                  try {
+                      await updateDoc(doc(db, "gyms", currentUserId, "members", memberId), { seances_restantes: currentSessions - 1 });
+                      await showAlert('Séance décomptée !', 'success');
+                      showViewMemberModal(memberId);
+                  } catch (error) {
+                      console.error("Error deducting session: ", error);
+                      await showAlert("Erreur lors du décompte.", 'error');
+                  }
             }
         }
 
@@ -1259,7 +1104,7 @@
                 try {
                     await showAlert("Suppression en cours...", "info");
                     const batch = writeBatch(db);
-                    const collectionsToDelete = ["members", "payments", "charges", "sessions", "personnel", "personnel_sessions", "scan_notifications"];
+                    const collectionsToDelete = ["members", "payments", "charges", "sessions", "personnel", "personnel_sessions", "config", "status"];
                     for(const col of collectionsToDelete) {
                         const snapshot = await getDocs(collection(db, "gyms", currentUserId, col));
                         snapshot.forEach(doc => batch.delete(doc.ref));
@@ -1267,8 +1112,8 @@
                     await batch.commit();
                     await showAlert("L'application a été réinitialisée.", "success");
                 } catch (error) {
-                     console.error("Error resetting application: ", error);
-                     await showAlert('Erreur lors de la réinitialisation.', 'error');
+                      console.error("Error resetting application: ", error);
+                      await showAlert('Erreur lors de la réinitialisation.', 'error');
                 }
             }
         }
@@ -1397,9 +1242,9 @@
                  } else if (member.memberType === 'subscription') {
                      mainActionBtn = `<button id="renew-btn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Renouveler</button>
                                        <button id="suspend-btn" class="flex-1 bg-yellow-500 text-white font-bold py-3 rounded-lg hover:bg-yellow-600 transition-colors">Suspendre</button>`;
-                 } else {
+                 } else { // session type
                      mainActionBtn = `<button id="deduct-btn" class="flex-1 bg-orange-500 text-white font-bold py-3 rounded-lg hover:bg-orange-600 transition-colors">Décompter 1 Séance</button>
-                                      <button id="add-sessions-btn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Ajouter des Séances</button>`;
+                                       <button id="add-sessions-btn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Ajouter des Séances</button>`;
                  }
                 actionButtonsHtml = `<div class="flex gap-4 pt-4 border-t mt-4">${mainActionBtn}</div>
                                        <div class="flex gap-4 pt-4 border-t mt-4">
@@ -1414,18 +1259,18 @@
                     <img src="${member.photoUrl || 'https://placehold.co/100x100/e2e8f0/475569?text=Photo'}" alt="Photo de membre" class="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/475569?text=Photo';">
                     <div class="flex-1">
                         <div class="flex items-start justify-between">
-                             <div>
-                                 <h3 class="text-3xl font-bold">${member.firstname} ${member.lastname}</h3>
-                                 <p class="text-slate-600">${member.phone}</p>
-                             </div>
-                            <div class="p-2 rounded-lg text-center ${color.replace('border-', 'bg-').replace('-500', '-100')}">
+                            <div>
+                                <h3 class="text-3xl font-bold">${member.firstname} ${member.lastname}</h3>
+                                <p class="text-slate-600">${member.phone}</p>
+                            </div>
+                            <div class="p-2 rounded-lg text-center ${color}">
                                 <span class="font-bold text-lg ${text}">${status}</span>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <div class="p-4 bg-slate-100 rounded-lg"><p class="text-sm text-slate-500">${member.memberType === 'subscription' ? 'Abonnement' : 'Carnet'}</p><p class="font-bold">${member.memberType === 'subscription' ? `Expire le : ${member.date_fin_abonnement ? member.date_fin_abonnement.toDate().toLocaleDateString('fr-FR') : 'N/A'}` : `Solde : ${member.seances_restantes || 0} séances`}</p></div>
+                    <div class="p-4 bg-slate-100 rounded-lg"><p class="text-sm text-slate-500">${member.memberType === 'subscription' ? 'Abonnement' : 'Carnet'}</p><p class="font-bold">${member.memberType === 'subscription' ? `Expire le : ${member.date_fin_abonnement ? member.date_fin_abonnement.toDate().toLocaleDateString('fr-FR') : 'N/A'}` : `Solde : ${member.seances_restantes || 0} séances`}</p></div>
                     <div class="p-4 bg-slate-100 rounded-lg"><p class="text-sm text-slate-500">Email</p><p class="font-bold">${member.email || 'Non fourni'}</p></div>
                 </div>
                 <div class="p-4 bg-amber-100 rounded-lg"><h4 class="font-bold mb-2 text-amber-800">Contact d'Urgence</h4><p><strong class="font-semibold">Nom:</strong> ${member.emergency_name || 'N/A'}</p><p><strong class="font-semibold">Tél:</strong> ${member.emergency_phone || 'N/A'}</p></div>
@@ -1494,82 +1339,125 @@
             }).then(result => { promptModal.classList.add('hidden'); return result; });
         }
         
+        async function handleSettingsSave(e) {
+            e.preventDefault();
+            if(isReadOnlyMode !== true) return; // Only owner can save
+            if(!await confirmWithPin()) return;
+
+            const submitBtn = document.getElementById('save-settings-button');
+            submitBtn.disabled = true;
+
+            const newName = document.getElementById('gym-name-input').value.trim();
+            const settingsRef = doc(db, "gyms", currentUserId, "config", "main");
+            try {
+                await setDoc(settingsRef, { gymName: newName }, { merge: true });
+                await showAlert("Paramètres enregistrés.", "success");
+            } catch (error) {
+                console.error("Error saving settings:", error);
+                await showAlert("Erreur lors de l'enregistrement.", "error");
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+
+
+        // --- QR CODE & CARD ---
         let html5QrCode = null;
-        function startQrScanner() {
-            document.getElementById('qr-scanner-title').textContent = 'Scannez un QR Code';
-            qrScannerModal.classList.remove('hidden');
-            html5QrCode = new Html5Qrcode("qr-reader");
-
-            const qrCodeSuccessCallback = async (decodedText) => {
-                stopQrScanner();
-                const member = allMembers.find(m => m.id === decodedText);
-                const staff = allPersonnel.find(p => p.id === decodedText);
-
-                if (member) {
-                    await handleMemberScan(member.id);
-                } else if (staff) {
-                    await handlePersonnelScan(staff.id);
-                } else {
-                    await showAlert("QR code non reconnu.", "error");
-                }
-            };
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, qrCodeSuccessCallback).catch(err => console.log(`Unable to start scanning, error=${err}`));
+        function startQrScanner(isKiosk = false, gymIdForKiosk = null) {
+            if (isKiosk) {
+                kioskGymId = gymIdForKiosk;
+                document.getElementById('app').classList.add('hidden');
+                kioskView.classList.remove('hidden');
+                html5QrCode = new Html5Qrcode("kiosk-reader");
+                const config = { fps: 5, qrbox: { width: 250, height: 250 } };
+                html5QrCode.start({ facingMode: "user" }, config, onKioskScanSuccess)
+                .catch(err => {
+                    console.log(`Unable to start kiosk scanning, error=${err}`);
+                    showAlert("Erreur de caméra. Veuillez vérifier les autorisations dans votre navigateur.", "error");
+                    stopKioskMode();
+                });
+            } else {
+                document.getElementById('qr-scanner-title').textContent = 'Scannez un QR Code';
+                qrScannerModal.classList.remove('hidden');
+                html5QrCode = new Html5Qrcode("qr-reader");
+                const qrCodeSuccessCallback = async (decodedText) => {
+                    stopQrScanner();
+                    await processScan(decodedText, currentUserId, 'modal');
+                };
+                html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, qrCodeSuccessCallback).catch(err => console.log(`Unable to start scanning, error=${err}`));
+            }
         }
         
-        async function handleMemberScan(memberId) {
-             const member = allMembers.find(m => m.id === memberId);
-             if (!member) return;
-
-             if (isReadOnlyMode) {
-                 return await showAlert(`Membre: ${member.firstname} ${member.lastname}\nStatut: ${getMemberStatus(member).status}`, 'info');
-             }
-
-             if (member.status === 'suspendu') {
-                await showAlert(`Accès refusé pour ${member.firstname}.\nStatut : Suspendu.`, "error");
-                return showViewMemberModal(member.id);
-             }
-
-             const sessionsRef = collection(db, "gyms", currentUserId, "sessions");
-             const q = query(sessionsRef, where("membre_id", "==", member.id), where("exitTime", "==", null));
-             const querySnapshot = await getDocs(q);
-
-             if (!querySnapshot.empty) {
-                 const sessionDoc = querySnapshot.docs[0];
-                 await updateDoc(sessionDoc.ref, { exitTime: serverTimestamp() });
-                 const durationMs = new Date() - sessionDoc.data().entryTime.toDate();
-                 const h = Math.floor(durationMs / 3600000);
-                 const m = Math.floor((durationMs % 3600000) / 60000);
-                 const durationText = h > 0 ? `${h}h ${m}min` : `${m}min`;
-                 await showAlert(`Au revoir ${member.firstname} !\nDurée de la séance : ${durationText}.`, 'info');
-             } else {
-                 const status = getMemberStatus(member);
-                 if (status.key === 'expired') {
-                      await showAlert(`Accès refusé pour ${member.firstname}.\nStatut : ${status.status}.`, "error");
-                      return showViewMemberModal(member.id);
-                 }
-                 try {
-                      if (member.memberType === 'session') await updateDoc(doc(db, "gyms", currentUserId, "members", member.id), { seances_restantes: (member.seances_restantes || 0) - 1 });
-                      await addDoc(sessionsRef, { membre_id: member.id, membre_nom_complet: `${member.firstname} ${member.lastname}`, entryTime: serverTimestamp(), exitTime: null });
-                      let welcomeMessage = `Bienvenue ${member.firstname} !\nStatut: ${status.status}`;
-                      if (member.memberType === 'subscription') welcomeMessage += `\nFin: ${member.date_fin_abonnement.toDate().toLocaleDateString('fr-FR')}`;
-                      await showAlert(welcomeMessage, 'success');
-                 } catch (error) {
-                      console.error("Erreur d'enregistrement d'entrée:", error);
-                      await showAlert("Erreur lors de l'enregistrement de l'entrée.", "error");
-                 }
-             }
+        function stopQrScanner() {
+            if(html5QrCode?.isScanning) {
+                html5QrCode.stop().catch(err => console.log("QR scanner stop failed", err));
+            }
+            qrScannerModal.classList.add('hidden');
         }
 
-        async function handlePersonnelScan(personnelId) {
-            const staff = allPersonnel.find(p => p.id === personnelId);
-            if (!staff) return;
+        function onKioskScanSuccess(decodedText) {
+            if(kioskScanCooldown) return;
+            kioskScanCooldown = true;
 
-            const sessionsRef = collection(db, "gyms", currentUserId, "personnel_sessions");
-            const q = query(sessionsRef, where("personnel_id", "==", staff.id), where("exitTime", "==", null));
+            processScan(decodedText, kioskGymId, 'kiosk');
+
+            setTimeout(() => {
+                kioskScanCooldown = false;
+            }, 3000); // 3-second cooldown
+        }
+        
+        async function processScan(scannedId, gymId, source) {
+            let user, userType, name, resultMessage, resultType;
+            try {
+                // Try fetching as a member
+                const memberDoc = await getDoc(doc(db, "gyms", gymId, "members", scannedId));
+                if (memberDoc.exists()) {
+                    user = { id: memberDoc.id, ...memberDoc.data() };
+                    userType = 'member';
+                    name = `${user.firstname} ${user.lastname}`;
+                } else {
+                    // Try fetching as personnel
+                    const personnelDoc = await getDoc(doc(db, "gyms", gymId, "personnel", scannedId));
+                    if(personnelDoc.exists()){
+                        user = { id: personnelDoc.id, ...personnelDoc.data() };
+                        userType = 'personnel';
+                        name = `${user.firstname} ${user.lastname}`;
+                    }
+                }
+                
+                if (user) {
+                    const result = userType === 'member' ? await processMemberCheckin(user, gymId) : await processPersonnelCheckin(user, gymId);
+                    resultMessage = result.message;
+                    resultType = result.type;
+                } else {
+                    name = 'Inconnu';
+                    resultMessage = "QR code non reconnu.";
+                    resultType = "error";
+                }
+
+            } catch (error) {
+                console.error("Error processing scan:", error);
+                name = 'Erreur';
+                resultMessage = 'Erreur système lors du scan.';
+                resultType = 'error';
+            }
+
+            // Update live feed
+            await setDoc(doc(db, "gyms", gymId, "status", "latestScan"), { name, status: resultMessage, type: resultType, timestamp: serverTimestamp() });
+            
+            // Display result
+            if(source === 'kiosk') displayKioskMessage(name, resultMessage, resultType);
+            else if (source === 'modal') showAlert(resultMessage, resultType);
+        }
+
+        async function processMemberCheckin(member, gymId) {
+            if (member.status === 'suspendu') {
+                return { message: `Accès refusé. Statut : Suspendu.`, type: "error" };
+            }
+
+            const sessionsRef = collection(db, "gyms", gymId, "sessions");
+            const q = query(sessionsRef, where("membre_id", "==", member.id), where("exitTime", "==", null));
             const querySnapshot = await getDocs(q);
-
-            let alertMessage = '';
-            let alertType = 'success';
 
             if (!querySnapshot.empty) {
                 const sessionDoc = querySnapshot.docs[0];
@@ -1578,193 +1466,92 @@
                 const h = Math.floor(durationMs / 3600000);
                 const m = Math.floor((durationMs % 3600000) / 60000);
                 const durationText = h > 0 ? `${h}h ${m}min` : `${m}min`;
-                alertMessage = `Départ enregistré pour ${staff.firstname}.\nTemps de travail : ${durationText}.`;
-                alertType = 'info';
+                return { message: `Au revoir ! Durée: ${durationText}.`, type: "info" };
             } else {
-                 await addDoc(sessionsRef, { personnel_id: staff.id, personnel_nom_complet: `${staff.firstname} ${staff.lastname}`, entryTime: serverTimestamp(), exitTime: null });
-                 alertMessage = `Arrivée enregistrée pour ${staff.firstname}.`;
-            }
-
-            if(isReadOnlyMode) {
-                await showAlert(alertMessage, alertType);
-            } else {
-                await showAlert("Pointage enregistré.", 'success');
-            }
-        }
-
-        function stopQrScanner() {
-            if(html5QrCode?.isScanning) html5QrCode.stop().catch(err => console.log("QR scanner stop failed", err));
-            qrScannerModal.classList.add('hidden');
-        }
-
-        let kioskHtml5QrCode = null;
-
-        function startKioskScanner(gymId) {
-            const resultDiv = document.getElementById('kiosk-result');
-            resultDiv.innerHTML = '<p class="text-slate-400">Démarrage de la caméra...</p>';
-
-            if (kioskHtml5QrCode && kioskHtml5QrCode.isScanning) {
-                kioskHtml5QrCode.stop().catch(err => {
-                    console.error("Erreur lors de l'arrêt du scanner précédent:", err);
-                });
-            }
-            kioskHtml5QrCode = new Html5Qrcode("kiosk-qr-reader");
-
-            const qrCodeSuccessCallback = (decodedText) => {
-                if (kioskHtml5QrCode && kioskHtml5QrCode.isScanning) {
-                    kioskHtml5QrCode.stop().then(() => {
-                        handleKioskScan(decodedText, gymId);
-                    }).catch(err => {
-                        console.error("Échec de l'arrêt du scanner après succès:", err);
-                        handleKioskScan(decodedText, gymId);
-                    });
+                const status = getMemberStatus(member);
+                if (status.key === 'expired') {
+                    return { message: `Accès refusé. Statut : ${status.status}.`, type: "error" };
                 }
-            };
-            
-            const config = {
-                fps: 10,
-                qrbox: (viewfinderWidth, viewfinderHeight) => {
-                    let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                    let qrboxSize = Math.floor(minEdge * 0.7);
-                    return { width: qrboxSize, height: qrboxSize };
-                },
-                rememberLastUsedCamera: false
-            };
-
-            kioskHtml5QrCode.start({ facingMode: "user" }, config, qrCodeSuccessCallback)
-                .catch(() => {
-                    console.warn("La caméra frontale a échoué. Essai avec la caméra arrière.");
-                    resultDiv.innerHTML = '<p class="text-yellow-400">Caméra frontale non trouvée, essai avec la caméra arrière...</p>';
-                    kioskHtml5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
-                        .catch((err) => {
-                            console.error("Toutes les caméras ont échoué.", err);
-                            resultDiv.innerHTML = `<p class="text-red-400">Erreur: Impossible d'accéder à une caméra. Veuillez vérifier les permissions.</p>`;
-                        });
-                });
-        }
-
-
-        async function handleKioskScan(scannedId, gymId) {
-            const resultDiv = document.getElementById('kiosk-result');
-            try {
-                const memberRef = doc(db, "gyms", gymId, "members", scannedId);
-                const personnelRef = doc(db, "gyms", gymId, "personnel", scannedId);
-                const memberSnap = await getDoc(memberRef);
-                const personnelSnap = await getDoc(personnelRef);
-
-                let person, personType;
-                if (memberSnap.exists()) {
-                    person = { id: memberSnap.id, ...memberSnap.data() };
-                    personType = 'member';
-                } else if (personnelSnap.exists()) {
-                    person = { id: personnelSnap.id, ...personnelSnap.data() };
-                    personType = 'personnel';
-                } else {
-                    throw new Error("QR Code non reconnu.");
-                }
-
-                const fullName = `${person.firstname} ${person.lastname}`;
-                let statusInfo = { allowed: false, message: "Accès refusé" };
-
-                if (personType === 'member') {
-                    const status = getMemberStatus(person);
-                    if (status.key === 'active' || status.key === 'expiring') {
-                        const endDate = person.date_fin_abonnement?.toDate()?.toLocaleDateString('fr-FR') || '';
-                        statusInfo = { allowed: true, message: `Abonnement valide. Fin: ${endDate}`};
-                    } else {
-                        statusInfo = { allowed: false, message: `Abonnement ${status.status}`};
-                    }
-                } else {
-                    statusInfo = { allowed: true, message: `Employé(e) : ${person.role || 'N/A'}`};
-                }
-
-                resultDiv.innerHTML = statusInfo.allowed 
-                    ? `<p class="text-green-400 text-3xl">Bienvenue ${person.firstname} !</p><p class="text-slate-300 text-xl mt-2">${statusInfo.message}</p>`
-                    : `<p class="text-red-400 text-3xl">Accès Refusé</p><p class="text-slate-300 text-xl mt-2">${fullName}<br>${statusInfo.message}</p>`;
-
-                const photo = await captureSelfie();
-                await addDoc(collection(db, "gyms", gymId, "scan_notifications"), {
-                    name: fullName,
-                    status: statusInfo.allowed ? "Autorisé" : "Refusé",
-                    message: statusInfo.message,
-                    photoDataUrl: photo,
-                    timestamp: serverTimestamp()
-                });
-
-            } catch (error) {
-                resultDiv.innerHTML = `<p class="text-red-400">${error.message}</p>`;
-            } finally {
-                setTimeout(() => startKioskScanner(gymId), 5000);
-            }
-        }
-
-        async function captureSelfie() {
-            const video = document.getElementById('selfie-video');
-            const canvas = document.getElementById('selfie-canvas');
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-                video.srcObject = stream;
-                await new Promise(resolve => video.onloadedmetadata = resolve);
-                await video.play();
-
-                await new Promise(resolve => setTimeout(resolve, 500)); 
-
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-                
-                stream.getTracks().forEach(track => track.stop());
-                return canvas.toDataURL('image/jpeg', 0.7);
-            } catch (err) {
-                console.error("Erreur de capture selfie:", err);
-                return 'https://placehold.co/80x80/e2e8f0/475569?text=No+Cam';
+                if (member.memberType === 'session') await updateDoc(doc(db, "gyms", gymId, "members", member.id), { seances_restantes: (member.seances_restantes || 0) - 1 });
+                await addDoc(sessionsRef, { membre_id: member.id, membre_nom_complet: `${member.firstname} ${member.lastname}`, entryTime: serverTimestamp(), exitTime: null });
+                return { message: `Bienvenue ! Statut: ${status.status}`, type: "success" };
             }
         }
         
-        function listenToScanNotifications() {
-            if (isReadOnlyMode) return;
-            unsubscribeScanNotifications();
-            
-            const q = query(
-                collection(db, "gyms", currentUserId, "scan_notifications"),
-                where("timestamp", ">", new Date()),
-                orderBy("timestamp", "desc")
-            );
+        async function processPersonnelCheckin(staff, gymId) {
+            const sessionsRef = collection(db, "gyms", gymId, "personnel_sessions");
+            const q = query(sessionsRef, where("personnel_id", "==", staff.id), where("exitTime", "==", null));
+            const querySnapshot = await getDocs(q);
 
-            unsubscribeScanNotifications = onSnapshot(q, (snapshot) => {
-                snapshot.docChanges().forEach((change) => {
-                    if (change.type === "added") {
-                        showScanNotification(change.doc.data());
-                    }
-                });
-            }, (error) => console.error("Error listening to scan notifications:", error));
+            if (!querySnapshot.empty) {
+                const sessionDoc = querySnapshot.docs[0];
+                await updateDoc(sessionDoc.ref, { exitTime: serverTimestamp() });
+                const durationMs = new Date() - sessionDoc.data().entryTime.toDate();
+                const h = Math.floor(durationMs / 3600000);
+                const m = Math.floor((durationMs % 3600000) / 60000);
+                const durationText = h > 0 ? `${h}h ${m}min` : `${m}min`;
+                return { message: `Départ enregistré. Temps: ${durationText}.`, type: "info" };
+            } else {
+                await addDoc(sessionsRef, { personnel_id: staff.id, personnel_nom_complet: `${staff.firstname} ${staff.lastname}`, entryTime: serverTimestamp(), exitTime: null });
+                return { message: 'Arrivée enregistrée.', type: "success" };
+            }
         }
-
-        function showScanNotification(data) {
-            const toast = document.getElementById('scan-notification-toast');
-            if(!toast) return;
-
-            const isAllowed = data.status === 'Autorisé';
+        
+        function displayKioskMessage(name, message, type){
+            const msgContainer = document.getElementById('kiosk-message');
+            const nameEl = msgContainer.children[0];
+            const msgEl = msgContainer.children[1];
             
-            toast.className = `fixed bottom-5 right-5 bg-white p-4 rounded-lg shadow-xl z-[100] w-full max-w-sm transition-transform duration-500 translate-x-0 ${isAllowed ? 'border-green-500' : 'border-red-500'} border-l-4`;
+            nameEl.textContent = name;
+            msgEl.textContent = message;
 
-            toast.innerHTML = `
-                <div class="flex items-start gap-4">
-                    <img src="${data.photoDataUrl || 'https://placehold.co/80x80/e2e8f0/475569?text=Photo'}" alt="photo" class="w-20 h-20 rounded-md object-cover bg-slate-200">
-                    <div class="flex-1">
-                        <p class="font-bold text-lg">${data.name}</p>
-                        <p class="font-semibold ${isAllowed ? 'text-green-600' : 'text-red-600'}">${data.status}</p>
-                        <p class="text-sm text-slate-600">${data.message}</p>
-                    </div>
-                    <button onclick="this.parentElement.parentElement.style.transform = 'translateX(120%)'" class="text-slate-400 hover:text-slate-700 text-2xl">&times;</button>
-                </div>
-            `;
-            
-            toast.classList.remove('hidden');
+            if(type === 'success') msgContainer.className = 'mt-8 text-center text-green-400 h-24';
+            else if(type === 'error') msgContainer.className = 'mt-8 text-center text-red-400 h-24';
+            else msgContainer.className = 'mt-8 text-center text-blue-400 h-24';
 
             setTimeout(() => {
-                toast.style.transform = 'translateX(120%)';
-            }, 10000);
+                nameEl.textContent = '';
+                msgEl.textContent = '';
+            }, 3000);
+        }
+
+        async function startKioskMode() {
+            let gymId = localStorage.getItem('kioskGymId');
+            if(!gymId) {
+                gymId = await showPrompt("Configuration Kiosque : Veuillez entrer l'identifiant de la salle.");
+                if(!gymId) return switchLoginTab('manager');
+                
+                try {
+                    await getDoc(doc(db, "gyms", gymId));
+                    localStorage.setItem('kioskGymId', gymId);
+                } catch (error) {
+                    await showAlert("ID de salle invalide. Configuration annulée.", "error");
+                    switchLoginTab('manager');
+                    return;
+                }
+            }
+            
+            loginView.classList.add('hidden');
+            startQrScanner(true, gymId);
+        }
+        
+        function stopKioskMode() {
+            if(html5QrCode?.isScanning) {
+                html5QrCode.stop().catch(err => console.log("QR scanner stop failed", err));
+            }
+            kioskView.classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+            loginView.classList.remove('hidden');
+            switchLoginTab('manager');
+            kioskGymId = null;
+        }
+
+        async function resetKioskConfiguration() {
+            if(await showConfirm("Voulez-vous reconfigurer ce kiosque ? L'ID de salle actuel sera effacé.") && await confirmWithPin()){
+                localStorage.removeItem('kioskGymId');
+                await showAlert("Configuration effacée. Veuillez reconfigurer le kiosque.", "info");
+                stopKioskMode();
+            }
         }
 
         function showMemberCard(member) {
@@ -1783,14 +1570,15 @@
 
         function generateCard(id, name, title, subtitle) {
             const displayArea = document.getElementById('card-display-area');
-            displayArea.innerHTML = `<div id="card-to-process" class="bg-white p-4 text-center"><div class="flex items-center justify-center mb-4"><i class="ph-bold ph-barbell text-3xl text-black"></i><h2 class="text-xl font-bold ml-2">FIT TRACK</h2></div><p class="font-semibold text-gray-500">${title}</p><h3 class="text-2xl font-bold">${name}</h3><p class="text-gray-600 mb-4">${subtitle}</p><canvas id="qr-canvas"></canvas></div>`;
+            const gymName = document.getElementById('app-title-main').textContent;
+            displayArea.innerHTML = `<div id="card-to-process" class="bg-white p-4 text-center"><div class="flex items-center justify-center mb-4"><i class="ph-bold ph-barbell text-3xl text-black"></i><h2 class="text-xl font-bold ml-2">${gymName}</h2></div><p class="font-semibold text-gray-500">${title}</p><h3 class="text-2xl font-bold">${name}</h3><p class="text-gray-600 mb-4">${subtitle}</p><canvas id="qr-canvas"></canvas></div>`;
             
             QRCode.toCanvas(document.getElementById('qr-canvas'), id, { width: 200 }, (error) => {
                 if (error) return console.error(error);
                 cardModal.classList.remove('hidden');
                 document.getElementById('download-card-btn').onclick = () => html2canvas(document.getElementById('card-to-process')).then(canvas => {
                     const link = document.createElement('a');
-                    link.download = `carte_${name.replace(' ', '_')}.png`;
+                    link.download = `carte_${name.replace(/\s+/g, '_')}.png`;
                     link.href = canvas.toDataURL('image/png');
                     link.click();
                 });
@@ -1809,7 +1597,7 @@
             const listContainer = document.getElementById('personnel-sessions-list');
             listContainer.innerHTML = '';
 
-            const sessions = allPersonnelSessions.filter(s => s.personnel_id === personnelId).slice(0, 50);
+            const sessions = allPersonnelSessions.filter(s => s.personnel_id === personnelId).slice(0, 50); // Get last 50 sessions
             if (sessions.length === 0) {
                 listContainer.innerHTML = `<p class="text-center text-slate-500 py-4">Aucun pointage enregistré.</p>`;
             } else {
@@ -1832,6 +1620,7 @@
             personnelSessionsModal.classList.remove('hidden');
         }
         
+        // --- FINANCE & REPORTS ---
         function updateDashboard() {
             const now = new Date();
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -1845,31 +1634,28 @@
             allPayments.forEach(p => { if (p.date_paiement && p.date_paiement.toDate() >= startOfMonth) revenueMonth += p.montant; });
             allCharges.forEach(c => { if (c.date && c.date.toDate() >= startOfMonth) chargesMonth += c.montant; });
             const format = (val) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(val);
-            if(document.getElementById('db-active-members')) {
-                document.getElementById('db-active-members').textContent = activeCount;
-                document.getElementById('db-expiring-soon').textContent = expiringCount;
-                document.getElementById('db-new-this-month').textContent = newThisMonthCount;
-                document.getElementById('db-revenue-month').textContent = format(revenueMonth);
-                document.getElementById('db-charges-month').textContent = format(chargesMonth);
-                document.getElementById('db-net-profit-month').textContent = format(revenueMonth - chargesMonth);
-            }
+            document.getElementById('db-active-members').textContent = activeCount;
+            document.getElementById('db-expiring-soon').textContent = expiringCount;
+            document.getElementById('db-new-this-month').textContent = newThisMonthCount;
+            document.getElementById('db-revenue-month').textContent = format(revenueMonth);
+            document.getElementById('db-charges-month').textContent = format(chargesMonth);
+            document.getElementById('db-net-profit-month').textContent = format(revenueMonth - chargesMonth);
         }
 
         function renderFinancialHistory() {
             const container = document.getElementById('financial-history-list');
             const noTransacMsg = document.getElementById('no-transactions-message');
-            if (!container) return;
             container.innerHTML = '';
             const revenues = allPayments.map(p => ({ type: 'revenue', id: p.id, date: p.date_paiement?.toDate(), desc: `${p.membre_nom_complet} - ${p.description}`, amount: p.montant }));
             const expenses = allCharges.map(c => ({ type: 'expense', id: c.id, date: c.date?.toDate(), desc: c.description, amount: c.montant }));
-            const history = [...revenues, ...expenses].sort((a, b) => (b.date || 0) - (a.date || 0));
+            const history = [...revenues, ...expenses].sort((a, b) => b.date - a.date);
             noTransacMsg.classList.toggle('hidden', history.length > 0);
             const formatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' });
             history.forEach(item => {
                 const isRevenue = item.type === 'revenue';
                 const div = document.createElement('div');
                 div.className = 'flex justify-between items-center p-2 rounded-md hover:bg-slate-100';
-                div.innerHTML = `<div><p class="font-semibold">${item.desc}</p><p class="text-sm text-slate-500">${item.date?.toLocaleDateString('fr-FR')}</p></div><div class="flex items-center"><p class="font-bold mr-4 ${isRevenue ? 'text-green-600' : 'text-red-600'}">${isRevenue ? '+' : '-'} ${formatter.format(item.amount)}</p><button class="delete-transaction-btn text-slate-400 hover:text-red-600 p-1" data-id="${item.id}" data-type="${item.type}"><i class="ph-bold ph-trash text-lg"></i></button></div>`;
+                div.innerHTML = `<div><p class="font-semibold">${item.desc}</p><p class="text-sm text-slate-500">${item.date?.toLocaleDateString('fr-FR')}</p></div><p class="font-bold mr-4 ${isRevenue ? 'text-green-600' : 'text-red-600'}">${isRevenue ? '+' : '-'} ${formatter.format(item.amount)}</p><button class="delete-transaction-btn text-slate-400 hover:text-red-600 p-1" data-id="${item.id}" data-type="${item.type}"><i class="ph-bold ph-trash text-lg"></i></button>`;
                 container.appendChild(div);
             });
         }
@@ -1888,12 +1674,12 @@
                 data = [...filteredPayments, ...filteredCharges].sort((a,b) => a[1] - b[1]).map(r => [r[1].toLocaleDateString('fr-FR'), r[0], r[2], r[3]]);
                 filename = `Rapport_Financier_${startDate.toISOString().split('T')[0]}.csv`;
             } else {
-                 headers = ['Nom', 'Prénom', 'Téléphone', 'Email', 'Type', 'Statut', 'Date Fin / Séances Restantes'];
-                 data = allMembers.map(m => {
-                     const statusInfo = getMemberStatus(m);
-                     const value = m.memberType === 'subscription' ? (m.date_fin_abonnement?.toDate().toLocaleDateString('fr-FR') || 'N/A') : m.seances_restantes;
-                     return [m.lastname, m.firstname, m.phone, m.email, m.memberType, statusInfo.status, value];
-                 });
+                headers = ['Nom', 'Prénom', 'Téléphone', 'Email', 'Type', 'Statut', 'Date Fin / Séances Restantes'];
+                data = allMembers.map(m => {
+                    const statusInfo = getMemberStatus(m);
+                    const value = m.memberType === 'subscription' ? (m.date_fin_abonnement?.toDate().toLocaleDateString('fr-FR') || 'N/A') : m.seances_restantes;
+                    return [m.lastname, m.firstname, m.phone, m.email, m.memberType, statusInfo.status, value];
+                });
                 filename = `Liste_Membres_${new Date().toISOString().split('T')[0]}.csv`;
             }
             if(data.length === 0) return showAlert("Aucune donnée à exporter.", "info");
@@ -1923,7 +1709,7 @@
                 btn.classList.toggle('shadow', isSelected);
                 btn.classList.toggle('text-slate-600', !isSelected);
             });
-            ['dashboard', 'members', 'finance', 'sessions', 'personnel'].forEach(section => {
+            ['dashboard', 'members', 'finance', 'sessions', 'personnel', 'settings'].forEach(section => {
                 document.getElementById(`${section}-section`).classList.toggle('hidden', section !== viewName);
             });
         }
@@ -1935,6 +1721,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', startApp);
+
     </script>
 </body>
 </html>
